@@ -127,7 +127,7 @@
                 <h2 class="text-3xl font-black text-gray-900 mb-3">Registration Successful!</h2>
                 <p class="text-gray-600 mb-8 text-lg">Welcome to the Santuri Sports Hub player database.</p>
                 <div class="flex flex-col sm:flex-row justify-center gap-4">
-                    <button onclick="document.getElementById('registerForm').reset(); document.getElementById('registerForm').classList.remove('hidden'); document.getElementById('regSuccessMsg').classList.add('hidden'); document.getElementById('photoPreviewContainer').innerHTML = '<span class=\'text-gray-500 font-medium\'>Click or Drag photo here</span>';" class="px-6 py-3 border border-gray-300 rounded-lg font-bold text-gray-700 hover:bg-gray-50 transition-colors">Register Another</button>
+                    <button onclick="document.getElementById('registerForm').reset(); document.getElementById('registerForm').classList.remove('hidden'); document.getElementById('regSuccessMsg').classList.add('hidden'); document.getElementById('photoPreviewContainer').innerHTML = '<span class=\'text-gray-500 font-medium\'>Click or Drag photo here</span>'; document.getElementById('regPhoto').dataset.base64 = '';" class="px-6 py-3 border border-gray-300 rounded-lg font-bold text-gray-700 hover:bg-gray-50 transition-colors">Register Another</button>
                     <button onclick="window.navigate('players')" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">View Players Database</button>
                 </div>
             </div>
@@ -283,12 +283,14 @@
         <p>© 2026 Santuri Sports Hub. Built for the 104 Villages of Santuri Block.</p>
     </footer>
 
+    <!-- Use type="module" to enable import statements -->
     <script type="module">
+        // Import Firebase components (NO STORAGE NEEDED)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
+        // Your specific Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyCNzxu9MEr_c_B7EpYik62Qc--gikdIXkI",
             authDomain: "santuri-sports-hub.firebaseapp.com",
@@ -297,10 +299,10 @@
             messagingSenderId: "293687065543",
             appId: "1:293687065543:web:9efb801bc5610b9f74b7e2"
         };
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app);
         const systemAppId = 'santuri-sports-hub';
 
         const SPORTS = ['Cricket', 'Football', 'Volleyball', 'Athletics', 'Badminton', 'Kabaddi', 'Other'];
@@ -379,7 +381,8 @@
             return 'Past';
         }
 
-        function renderTournaments(tourneyList = state.tournaments, targetGridId = 'tournaments-grid', useFilter = true) {
+        // Attach global functions early so the DOM can use them
+        window.renderTournaments = function(tourneyList = state.tournaments, targetGridId = 'tournaments-grid', useFilter = true) {
             const grid = document.getElementById(targetGridId);
             if (!grid) return;
             
@@ -426,9 +429,9 @@
                 </div>
                 `;
             }).join('');
-        }
+        };
 
-        function renderPlayers() {
+        window.renderPlayers = function() {
             const grid = document.getElementById('players-grid');
             if (!grid) return;
             
@@ -461,7 +464,7 @@
                 </div>
                 `;
             }).join('');
-        }
+        };
 
         function setupAutocomplete(searchInputId, dropdownId, hiddenInputId, gpDisplayId = null) {
             const input = document.getElementById(searchInputId);
@@ -512,11 +515,32 @@
 
             input.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                    }
-                    reader.readAsDataURL(e.target.files[0]);
+                    
+                    reader.onload = (event) => {
+                        // Create an image element to compress it
+                        const img = new Image();
+                        img.onload = () => {
+                            // Compress image to a tiny size to fit directly in the database
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const MAX_WIDTH = 200; // Small size for avatar
+                            const scale = MAX_WIDTH / img.width;
+                            canvas.width = MAX_WIDTH;
+                            canvas.height = img.height * scale;
+                            
+                            // Draw and convert to base64 string
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); // 60% quality JPEG
+                            
+                            // Show preview and store the text string directly on the input element
+                            preview.innerHTML = `<img src="${compressedBase64}" class="w-full h-full object-cover">`;
+                            input.dataset.base64 = compressedBase64;
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
                 }
             });
         }
@@ -554,11 +578,10 @@
                     }
                 }
             });
-            renderTournaments();
+            window.renderTournaments();
         };
 
         function attachEvents() {
-            // Populate Sports Dropdowns
             const regSport = document.getElementById('regSport');
             const adminTSport = document.getElementById('adminTSport');
             const pSportFilter = document.getElementById('player-sport-filter');
@@ -593,7 +616,11 @@
                 regForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     if (!auth.currentUser) {
-                        alert("Database is initializing, please wait a second and try again.");
+                        alert("Database is connecting, please wait a second and try again.");
+                        return;
+                    }
+                    if (!document.getElementById('regVillageId').value) {
+                        alert("Please select a valid village from the dropdown menu.");
                         return;
                     }
                     
@@ -602,13 +629,8 @@
                     btn.disabled = true;
 
                     try {
-                        let finalPhotoUrl = null;
-                        const photoFile = document.getElementById('regPhoto').files[0];
-                        if (photoFile) {
-                            const storageRef = ref(storage, `artifacts/${systemAppId}/photos/${Date.now()}_${photoFile.name}`);
-                            const snapshot = await uploadBytes(storageRef, photoFile);
-                            finalPhotoUrl = await getDownloadURL(snapshot.ref);
-                        }
+                        // Grab the compressed base64 string directly (no Firebase Storage needed!)
+                        const photoDataUrl = document.getElementById('regPhoto').dataset.base64 || null;
 
                         const newPlayer = {
                             name: document.getElementById('regName').value,
@@ -617,7 +639,7 @@
                             villageId: document.getElementById('regVillageId').value,
                             sport: document.getElementById('regSport').value,
                             role: document.getElementById('regRole').value,
-                            photoUrl: finalPhotoUrl,
+                            photoUrl: photoDataUrl, // Saves the text string directly to the DB
                             createdAt: Date.now()
                         };
 
@@ -626,7 +648,7 @@
                         document.getElementById('regSuccessMsg').classList.remove('hidden');
                     } catch (err) {
                         console.error(err);
-                        alert("Failed to save player: " + err.message + "\n\n(Ensure your Firebase Firestore Security Rules are set to allow read/write.)");
+                        alert("Failed to save: " + err.message + "\n\n(Ensure your Firebase Firestore Security Rules are set to allow read/write.)");
                     } finally {
                         btn.innerText = 'Submit Registration';
                         btn.disabled = false;
@@ -668,6 +690,7 @@
             }
         }
 
+        // Initialize App
         window.onload = async () => {
             attachEvents();
             
@@ -683,13 +706,13 @@
                 
                 onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'players'), (snap) => {
                     state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    renderPlayers();
+                    window.renderPlayers();
                 });
 
                 onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'tournaments'), (snap) => {
                     state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    renderTournaments();
-                    renderTournaments(state.tournaments.slice(0, 3), 'home-tournaments-grid', false);
+                    window.renderTournaments();
+                    window.renderTournaments(state.tournaments.slice(0, 3), 'home-tournaments-grid', false);
                 });
             } catch (err) {
                 console.error("Firebase Auth failed:", err);
