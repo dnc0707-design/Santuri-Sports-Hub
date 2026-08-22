@@ -5,51 +5,290 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Santuri Sports Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        // This ensures if a user clicks a button before the Firebase script finishes loading, 
+        // the app Remembers the click and executes it once ready, preventing a crash.
+        window.__pendingNav = null;
+        window.__pendingTab = null;
+        window.navigate = function(page, id = null) { window.__pendingNav = {page, id}; };
+        window.setTournamentTab = function(tab) { window.__pendingTab = tab; };
+    </script>
     <style>
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Custom Select Styling */
-        select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em; }
-        
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden-view { display: none !important; }
+        .tab-active { background-color: white; color: #111827; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .tab-inactive { color: #6b7280; }
+        .tab-inactive:hover { color: #374151; }
+        .dropdown-item:hover { background-color: #eff6ff; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
 
-    <nav class="bg-gray-900 text-white sticky top-0 z-50 shadow-md">
+    <nav class="bg-gray-900 text-white sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
-                <div class="flex items-center gap-2 font-black text-xl tracking-tight cursor-pointer" onclick="navigate('home')">
-                    SANTURI SPORTS
-                </div>
-                <div class="hidden md:flex space-x-1 overflow-x-auto text-sm font-medium" id="desktop-nav">
-                    <!-- Nav items injected via JS -->
+                <div class="flex items-center gap-2 font-black text-xl tracking-tight cursor-pointer" onclick="window.navigate('home')">SANTURI SPORTS</div>
+                <div class="hidden md:flex space-x-1 overflow-x-auto text-sm font-medium">
+                    <button onclick="window.navigate('home')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="home">HOME</button>
+                    <button onclick="window.navigate('players')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="players">PLAYERS</button>
+                    <button onclick="window.navigate('sports')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="sports">SPORTS</button>
+                    <button onclick="window.navigate('tournaments')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="tournaments">TOURNAMENTS</button>
+                    <button onclick="window.navigate('panchayats')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="panchayats">PANCHAYATS</button>
+                    <button onclick="window.navigate('register')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors text-blue-400" data-page="register">REGISTER</button>
+                    <button onclick="window.navigate('about')" class="nav-btn px-3 py-2 rounded hover:bg-gray-800 transition-colors" data-page="about">ABOUT</button>
+                    <button onclick="window.navigate('admin')" class="nav-btn px-3 py-2 text-yellow-400 hover:bg-gray-800 rounded transition-colors ml-4 border border-gray-700" data-page="admin">ADMIN LOGIN</button>
                 </div>
             </div>
         </div>
-        <div class="md:hidden flex overflow-x-auto bg-gray-800 px-2 py-2 text-xs font-medium space-x-4 no-scrollbar" id="mobile-nav">
-             <!-- Mobile Nav items injected via JS -->
+        <div class="md:hidden flex overflow-x-auto bg-gray-800 px-2 py-2 text-xs font-medium space-x-4">
+            <button onclick="window.navigate('home')" class="whitespace-nowrap text-gray-300 hover:text-white">HOME</button>
+            <button onclick="window.navigate('tournaments')" class="whitespace-nowrap text-gray-300 hover:text-white">TOURNAMENTS</button>
+            <button onclick="window.navigate('players')" class="whitespace-nowrap text-gray-300 hover:text-white">PLAYERS</button>
+            <button onclick="window.navigate('register')" class="whitespace-nowrap text-gray-300 hover:text-white">REGISTER</button>
+            <button onclick="window.navigate('admin')" class="whitespace-nowrap text-yellow-400 hover:text-yellow-300">ADMIN</button>
         </div>
     </nav>
 
-    <main id="app-root" class="flex-grow min-h-[calc(100vh-64px)] pb-12 fade-in">
-        <!-- Views rendered dynamically here -->
+    <main class="flex-grow">
+        <!-- Home View -->
+        <div id="view-home" class="page-view hidden-view">
+            <div class="bg-blue-900 text-white py-20 px-4 text-center">
+                <h1 class="text-4xl md:text-6xl font-black mb-4">Santuri Sports Hub</h1>
+                <p class="text-lg md:text-xl text-blue-200 max-w-2xl mx-auto">Connecting Players, Teams, and Tournaments across all 104 villages of Santuri Block.</p>
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button onclick="window.navigate('tournaments')" class="bg-white text-blue-900 font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors shadow-lg">Explore Tournaments</button>
+                    <button onclick="window.navigate('register')" class="bg-blue-700 text-white border border-blue-500 font-bold py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors">Register as Player</button>
+                </div>
+            </div>
+            <div class="max-w-7xl mx-auto px-4 py-16">
+                <div class="flex justify-between items-end mb-8 border-b pb-4">
+                    <div>
+                        <h2 class="text-3xl font-black text-gray-900">Latest Action</h2>
+                        <p class="text-gray-600 mt-1">Recent tournaments in Santuri</p>
+                    </div>
+                    <button onclick="window.navigate('tournaments')" class="text-blue-600 font-bold hover:underline">View All &rarr;</button>
+                </div>
+                <div id="home-tournaments-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
+
+        <!-- Tournaments View -->
+        <div id="view-tournaments" class="page-view hidden-view max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-8">
+                <h1 class="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Tournaments</h1>
+                <p class="text-gray-600 mt-2">Discover, track, and manage sports tournaments across Santuri Block.</p>
+            </div>
+            
+            <div class="flex bg-gray-100 p-1 rounded-xl mb-8 w-full md:w-fit mx-auto md:mx-0">
+                <button onclick="window.setTournamentTab('Upcoming')" id="tab-Upcoming" class="flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all tab-active">UPCOMING</button>
+                <button onclick="window.setTournamentTab('Live')" id="tab-Live" class="flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all tab-inactive">LIVE</button>
+                <button onclick="window.setTournamentTab('Past')" id="tab-Past" class="flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all tab-inactive">PAST</button>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <input type="text" id="tournament-search" class="flex-grow border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Search tournaments, venues..." oninput="renderTournaments()">
+                <div class="flex gap-2">
+                    <select id="tournament-sport-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="renderTournaments()">
+                        <option value="All">All Sports</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tournaments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Players View -->
+        <div id="view-players" class="page-view hidden-view max-w-7xl mx-auto px-4 py-8">
+            <div class="flex justify-between items-end mb-8 border-b pb-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Player Database</h1>
+                    <p class="text-gray-600 mt-2">Registered talent across Santuri Block.</p>
+                </div>
+                <button onclick="window.navigate('register')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700">+ Register</button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <input type="text" id="player-search" placeholder="Search players by name..." class="flex-grow border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 text-sm" oninput="renderPlayers()">
+                <select id="player-sport-filter" class="border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white" onchange="renderPlayers()">
+                    <option value="All">All Sports</option>
+                </select>
+            </div>
+
+            <div id="players-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+        </div>
+
+        <!-- Register View -->
+        <div id="view-register" class="page-view hidden-view max-w-3xl mx-auto px-4 py-10">
+            <h1 class="text-3xl md:text-4xl font-black text-gray-900 mb-2">Player Registration</h1>
+            <p class="text-gray-600 mb-8">Join the official sports database of Santuri Block to participate in upcoming tournaments.</p>
+
+            <div id="regSuccessMsg" class="hidden max-w-xl mx-auto text-center py-10">
+                <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 text-3xl font-bold">✓</div>
+                <h2 class="text-3xl font-black text-gray-900 mb-3">Registration Successful!</h2>
+                <p class="text-gray-600 mb-8 text-lg">Welcome to the Santuri Sports Hub player database.</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <button onclick="document.getElementById('registerForm').reset(); document.getElementById('registerForm').classList.remove('hidden'); document.getElementById('regSuccessMsg').classList.add('hidden'); document.getElementById('photoPreviewContainer').innerHTML = '<span class=\'text-gray-500 font-medium\'>Click or Drag photo here</span>';" class="px-6 py-3 border border-gray-300 rounded-lg font-bold text-gray-700 hover:bg-gray-50 transition-colors">Register Another</button>
+                    <button onclick="window.navigate('players')" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">View Players Database</button>
+                </div>
+            </div>
+
+            <form id="registerForm" class="bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm space-y-6">
+                <div class="flex flex-col items-center justify-center mb-6">
+                    <div id="photoDropzone" class="w-32 h-32 rounded-full border-4 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden relative">
+                        <div id="photoPreviewContainer" class="absolute inset-0 flex items-center justify-center flex-col p-2">
+                            <span class="text-gray-500 text-xs font-medium">Click or Drag photo</span>
+                        </div>
+                        <input type="file" id="regPhoto" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Upload Profile Photo (Optional)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Full Name *</label>
+                        <input required type="text" id="regName" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your full name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Phone Number *</label>
+                        <input required type="tel" id="regPhone" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500" placeholder="10-digit mobile number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Age</label>
+                        <input type="number" id="regAge" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500" placeholder="Years">
+                    </div>
+                    
+                    <div class="md:col-span-2 relative">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Village *</label>
+                        <input type="text" id="regVillageSearch" autocomplete="off" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 bg-white" placeholder="Type to search village..." required>
+                        <input type="hidden" id="regVillageId" required>
+                        <ul id="regVillageDropdown" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto hidden"></ul>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Gram Panchayat</label>
+                        <input type="text" id="regGpDisplay" disabled class="w-full border border-gray-200 bg-gray-50 rounded-lg p-3 text-gray-500 font-medium" placeholder="Auto-fills based on village">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Primary Sport *</label>
+                        <select required id="regSport" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <!-- Populated via JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Role</label>
+                        <select id="regRole" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="Player">Player</option>
+                            <option value="Captain">Captain</option>
+                            <option value="Coach">Coach</option>
+                            <option value="Umpire/Referee">Umpire / Referee</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-4 flex items-center justify-end">
+                    <button type="submit" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-sm hover:bg-blue-700 transition-colors w-full md:w-auto">Submit Registration</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Admin Login View -->
+        <div id="view-admin" class="page-view hidden-view max-w-md mx-auto mt-20 p-8 bg-white rounded-2xl shadow-sm border border-gray-200">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black text-gray-900">Admin Access</h2>
+                <p class="text-gray-500 mt-2 font-medium">Please login to manage tournaments.</p>
+            </div>
+            <form id="adminLoginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-black text-gray-700 mb-2">User ID</label>
+                    <input type="text" id="adminUser" required class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors" />
+                </div>
+                <div>
+                    <label class="block text-sm font-black text-gray-700 mb-2">Password</label>
+                    <input type="password" id="adminPass" required class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors" />
+                </div>
+                <p id="adminError" class="text-red-500 text-sm font-bold text-center hidden">Invalid User ID or Password.</p>
+                <button type="submit" class="w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg hover:bg-gray-800 transition-colors text-lg">Login Securely</button>
+            </form>
+        </div>
+
+        <!-- Admin Dashboard View -->
+        <div id="view-admin-dashboard" class="page-view hidden-view max-w-4xl mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-black text-gray-900">Admin Panel: Tournaments</h1>
+                <button onclick="window.navigate('home')" class="bg-red-100 text-red-600 hover:bg-red-200 font-bold py-2 px-4 rounded-lg transition-colors">Logout</button>
+            </div>
+            <div class="bg-white p-6 md:p-8 rounded-xl border border-gray-200 shadow-sm">
+                <h2 class="text-xl font-bold mb-6 border-b pb-2">Create New Tournament</h2>
+                <form id="adminTournamentForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tournament Name *</label>
+                            <input required type="text" id="adminTName" class="w-full border border-gray-300 rounded-lg p-2.5" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sport *</label>
+                            <select id="adminTSport" class="w-full border border-gray-300 rounded-lg p-2.5">
+                                <!-- Populated via JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Override</label>
+                            <select id="adminTStatus" class="w-full border border-gray-300 rounded-lg p-2.5">
+                                <option value="Automatic">Automatic (Based on Dates)</option>
+                                <option value="Upcoming">Upcoming</option>
+                                <option value="Live">Live</option>
+                                <option value="Past">Past</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                            <input required type="date" id="adminTStartDate" class="w-full border border-gray-300 rounded-lg p-2.5" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" id="adminTEndDate" class="w-full border border-gray-300 rounded-lg p-2.5" />
+                        </div>
+                        <div class="col-span-1 md:col-span-2 relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Village *</label>
+                            <input type="text" id="adminVillageSearch" autocomplete="off" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 bg-white" placeholder="Type to search village..." required>
+                            <input type="hidden" id="adminVillageId" required>
+                            <ul id="adminVillageDropdown" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto hidden"></ul>
+                        </div>
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Venue Name *</label>
+                            <input required type="text" id="adminTVenue" placeholder="e.g. RangaDanga High School Ground" class="w-full border border-gray-300 rounded-lg p-2.5" />
+                        </div>
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Organizer Name</label>
+                            <input required type="text" id="adminTOrganizer" class="w-full border border-gray-300 rounded-lg p-2.5" />
+                        </div>
+                    </div>
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-sm hover:bg-blue-700">Save Tournament</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Generic Placeholder View (Sports, Panchayats, About) -->
+        <div id="view-generic" class="page-view hidden-view max-w-7xl mx-auto px-4 py-20 text-center">
+            <h2 id="generic-title" class="text-3xl font-black mb-4 uppercase"></h2>
+            <p class="text-gray-500 mb-8">This module is part of the broader Santuri Sports Hub ecosystem.</p>
+            <button onclick="window.navigate('tournaments')" class="mt-8 text-blue-600 hover:underline">Go to Tournaments Module</button>
+        </div>
+
     </main>
 
     <footer class="bg-gray-900 text-gray-400 py-8 text-center text-sm border-t border-gray-800 mt-auto">
-        <p>© 2026 Santuri Sports Hub.</p>
+        <p>© 2026 Santuri Sports Hub. Built for the 104 Villages of Santuri Block.</p>
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCNzxu9MEr_c_B7EpYik62Qc--gikdIXkI",
             authDomain: "santuri-sports-hub.firebaseapp.com",
@@ -58,81 +297,75 @@
             messagingSenderId: "293687065543",
             appId: "1:293687065543:web:9efb801bc5610b9f74b7e2"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-        const systemAppId = typeof __app_id !== 'undefined' ? __app_id : 'santuri-sports-hub';
+        const systemAppId = 'santuri-sports-hub';
 
-        // Expose critical functions to window for inline HTML onclick/onsubmit handlers
-        window.navigate = navigate;
-        window.setTournamentTab = setTournamentTab;
-        window.handleAdminLogin = handleAdminLogin;
-        window.handleAdminLogout = handleAdminLogout;
-
-        // Constants Data
-        const PANCHAYATS = ['Balitora', 'Muradi', 'Ramchandrapur-Kotaldi', 'Santuri', 'Tarabari', 'Garsika'];
         const SPORTS = ['Cricket', 'Football', 'Volleyball', 'Athletics', 'Badminton', 'Kabaddi', 'Other'];
         
-        // Complete 104 Village Database
         const VILLAGES = [
-            { id: 'v1', name: 'Agnachak', gp: 'Balitora' }, { id: 'v2', name: 'Ambari', gp: 'Santuri' }, { id: 'v3', name: 'Amdiha', gp: 'Tarabari' }, { id: 'v4', name: 'Amlagarya', gp: 'Tarabari' },
-            { id: 'v5', name: 'Anthumajhirdi', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v6', name: 'Baghaband', gp: 'Tarabari' }, { id: 'v7', name: 'Baghadabar', gp: 'Santuri' },
-            { id: 'v8', name: 'Bakuliashota', gp: 'Balitora' }, { id: 'v9', name: 'Balitora', gp: 'Balitora' }, { id: 'v10', name: 'Barhanti', gp: 'Balitora' },
-            { id: 'v11', name: 'Beliapur', gp: 'Balitora' }, { id: 'v12', name: 'Beljhupa', gp: 'Balitora' }, { id: 'v13', name: 'Benagaria', gp: 'Tarabari' },
-            { id: 'v14', name: 'Benrya', gp: 'Garsika' }, { id: 'v15', name: 'Berakural', gp: 'Balitora' }, { id: 'v16', name: 'Bheti', gp: 'Muradi' },
-            { id: 'v17', name: 'Bidhakata', gp: 'Tarabari' }, { id: 'v18', name: 'Brindabanpur', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v19', name: 'Chandurdi', gp: 'Balitora' },
-            { id: 'v20', name: 'Chapabera Chak', gp: 'Balitora' }, { id: 'v21', name: 'Chhayrabari', gp: 'Muradi' }, { id: 'v22', name: 'Chhota Pathar', gp: 'Santuri' },
-            { id: 'v23', name: 'Damodarpur', gp: 'Muradi' }, { id: 'v24', name: 'Dandahit', gp: 'Balitora' }, { id: 'v25', name: 'Deuli', gp: 'Balitora' },
-            { id: 'v26', name: 'Dhanasdi', gp: 'Balitora' }, { id: 'v27', name: 'Dhenkshila', gp: 'Santuri' }, { id: 'v28', name: 'Dhuluri', gp: 'Ramchandrapur-Kotaldi' },
-            { id: 'v29', name: 'Dubrajpur', gp: 'Tarabari' }, { id: 'v30', name: 'Dulalgora', gp: 'Tarabari' }, { id: 'v31', name: 'Dumdumi', gp: 'Balitora' },
-            { id: 'v32', name: 'Ektira', gp: 'Balitora' }, { id: 'v33', name: 'Gangpur', gp: 'Muradi' }, { id: 'v34', name: 'Gangtiadi', gp: 'Ramchandrapur-Kotaldi' },
-            { id: 'v35', name: 'Ghoramurga', gp: 'Garsika' }, { id: 'v36', name: 'Ghutgarya', gp: 'Tarabari' }, { id: 'v37', name: 'Goalberya', gp: 'Garsika' },
-            { id: 'v38', name: 'Gorsika', gp: 'Garsika' }, { id: 'v39', name: 'Gothbathan', gp: 'Garsika' }, { id: 'v40', name: 'Gumra', gp: 'Tarabari' },
-            { id: 'v41', name: 'Hansdima', gp: 'Garsika' }, { id: 'v42', name: 'Indkhuri Alias Dulurdi', gp: 'Muradi' }, { id: 'v43', name: 'Jagannathdi', gp: 'Balitora' },
-            { id: 'v44', name: 'Jashpur', gp: 'Muradi' }, { id: 'v45', name: 'Jiathol', gp: 'Santuri' }, { id: 'v46', name: 'Jibanpur Alias Ramjibanpur', gp: 'Santuri' },
-            { id: 'v47', name: 'Kalaid', gp: 'Balitora' }, { id: 'v48', name: 'Kalikapur', gp: 'Balitora' }, { id: 'v49', name: 'Kalipahari', gp: 'Garsika' },
-            { id: 'v50', name: 'Kankar Kiari', gp: 'Tarabari' }, { id: 'v51', name: 'Kashikunri', gp: 'Santuri' }, { id: 'v52', name: 'Kashtagora', gp: 'Balitora' },
-            { id: 'v53', name: 'Kendberya', gp: 'Tarabari' }, { id: 'v54', name: 'Kendthol', gp: 'Garsika' }, { id: 'v55', name: 'Kharbana', gp: 'Muradi' },
-            { id: 'v56', name: 'Kharbar', gp: 'Garsika' }, { id: 'v57', name: 'Khayerbasia Chak', gp: 'Santuri' }, { id: 'v58', name: 'Kherad', gp: 'Tarabari' },
-            { id: 'v59', name: 'Kinaidih', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v60', name: 'Krishnapur', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v61', name: 'Kotaldih', gp: 'Ramchandrapur-Kotaldi' },
-            { id: 'v62', name: 'Kulai', gp: 'Garsika' }, { id: 'v63', name: 'Kushtor', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v64', name: 'Kushunda', gp: 'Santuri' },
-            { id: 'v65', name: 'Lalgar', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v66', name: 'Lapahari', gp: 'Tarabari' }, { id: 'v67', name: 'Latulbad', gp: 'Tarabari' },
-            { id: 'v68', name: 'Ledasan', gp: 'Tarabari' }, { id: 'v69', name: 'Lediam', gp: 'Santuri' }, { id: 'v70', name: 'Madhubanpur', gp: 'Muradi' },
-            { id: 'v71', name: 'Madhukunda Alias Mokura', gp: 'Balitora' }, { id: 'v72', name: 'Malibana', gp: 'Tarabari' }, { id: 'v73', name: 'Manjuri', gp: 'Santuri' },
-            { id: 'v74', name: 'Manpur', gp: 'Balitora' }, { id: 'v75', name: 'Marbedya', gp: 'Garsika' }, { id: 'v76', name: 'Matidundra', gp: 'Garsika' },
-            { id: 'v77', name: 'Mejharadi', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v78', name: 'Mohanpur', gp: 'Balitora' }, { id: 'v79', name: 'Moraldi', gp: 'Tarabari' },
-            { id: 'v80', name: 'Muktipur', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v81', name: 'Muraddi', gp: 'Muradi' }, { id: 'v82', name: 'Murulia', gp: 'Muradi' },
-            { id: 'v83', name: 'Nabaghanadi Alias Patharbad', gp: 'Muradi' }, { id: 'v84', name: 'Nichintapur', gp: 'Balitora' }, { id: 'v85', name: 'Nimtikuri', gp: 'Santuri' },
-            { id: 'v86', name: 'Nuhuchibad', gp: 'Tarabari' }, { id: 'v87', name: 'Pachandapur', gp: 'Balitora' }, { id: 'v88', name: 'Palash Pahari', gp: 'Garsika' },
-            { id: 'v89', name: 'Pandua Chak', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v90', name: 'Parasigaria', gp: 'Muradi' }, { id: 'v91', name: 'Pirargorya', gp: 'Santuri' },
-            { id: 'v92', name: 'Poradiha', gp: 'Balitora' }, { id: 'v93', name: 'Rakta', gp: 'Balitora' }, { id: 'v94', name: 'Rambhatdi', gp: 'Tarabari' },
-            { id: 'v95', name: 'Ramchandrapur', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v96', name: 'Salberya', gp: 'Santuri' }, { id: 'v97', name: 'Santuri', gp: 'Santuri' },
-            { id: 'v98', name: 'Saoradi', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v99', name: 'Sashpur', gp: 'Balitora' }, { id: 'v100', name: 'Shaltora', gp: 'Tarabari' },
-            { id: 'v101', name: 'Shunuri', gp: 'Balitora' }, { id: 'v102', name: 'Talberya', gp: 'Santuri' }, { id: 'v103', name: 'Tarabari', gp: 'Tarabari' },
-            { id: 'v104', name: 'Teashi', gp: 'Garsika' }
+            { id: 'v1', name: 'Agnachak', gp: 'Balitora' }, { id: 'v2', name: 'Ambari', gp: 'Santuri' },
+            { id: 'v3', name: 'Amdiha', gp: 'Tarabari' }, { id: 'v4', name: 'Amlagarya', gp: 'Tarabari' },
+            { id: 'v5', name: 'Anthumajhirdi', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v6', name: 'Baghaband', gp: 'Tarabari' },
+            { id: 'v7', name: 'Baghadabar', gp: 'Santuri' }, { id: 'v8', name: 'Bakuliashota', gp: 'Balitora' },
+            { id: 'v9', name: 'Balitora', gp: 'Balitora' }, { id: 'v10', name: 'Barhanti', gp: 'Balitora' },
+            { id: 'v11', name: 'Beliapur', gp: 'Balitora' }, { id: 'v12', name: 'Beljhupa', gp: 'Balitora' },
+            { id: 'v13', name: 'Benagaria', gp: 'Tarabari' }, { id: 'v14', name: 'Benrya', gp: 'Garsika' },
+            { id: 'v15', name: 'Berakural', gp: 'Balitora' }, { id: 'v16', name: 'Bheti', gp: 'Muradi' },
+            { id: 'v17', name: 'Bidhakata', gp: 'Tarabari' }, { id: 'v18', name: 'Brindabanpur', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v19', name: 'Chandurdi', gp: 'Balitora' }, { id: 'v20', name: 'Chapabera Chak', gp: 'Balitora' },
+            { id: 'v21', name: 'Chhayrabari', gp: 'Muradi' }, { id: 'v22', name: 'Chhota Pathar', gp: 'Santuri' },
+            { id: 'v23', name: 'Damodarpur', gp: 'Muradi' }, { id: 'v24', name: 'Dandahit', gp: 'Balitora' },
+            { id: 'v25', name: 'Deuli', gp: 'Balitora' }, { id: 'v26', name: 'Dhanasdi', gp: 'Balitora' },
+            { id: 'v27', name: 'Dhenkshila', gp: 'Santuri' }, { id: 'v28', name: 'Dhuluri', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v29', name: 'Dubrajpur', gp: 'Tarabari' }, { id: 'v30', name: 'Dulalgora', gp: 'Tarabari' },
+            { id: 'v31', name: 'Dumdumi', gp: 'Balitora' }, { id: 'v32', name: 'Ektira', gp: 'Balitora' },
+            { id: 'v33', name: 'Gangpur', gp: 'Muradi' }, { id: 'v34', name: 'Gangtiadi', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v35', name: 'Ghoramurga', gp: 'Garsika' }, { id: 'v36', name: 'Ghutgarya', gp: 'Tarabari' },
+            { id: 'v37', name: 'Goalberya', gp: 'Garsika' }, { id: 'v38', name: 'Gorsika', gp: 'Garsika' },
+            { id: 'v39', name: 'Gothbathan', gp: 'Garsika' }, { id: 'v40', name: 'Gumra', gp: 'Tarabari' },
+            { id: 'v41', name: 'Hansdima', gp: 'Garsika' }, { id: 'v42', name: 'Indkhuri Alias Dulurdi', gp: 'Muradi' },
+            { id: 'v43', name: 'Jagannathdi', gp: 'Balitora' }, { id: 'v44', name: 'Jashpur', gp: 'Muradi' },
+            { id: 'v45', name: 'Jiathol', gp: 'Santuri' }, { id: 'v46', name: 'Jibanpur Alias Ramjibanpur', gp: 'Santuri' },
+            { id: 'v47', name: 'Kalaid', gp: 'Balitora' }, { id: 'v48', name: 'Kalikapur', gp: 'Balitora' },
+            { id: 'v49', name: 'Kalipahari', gp: 'Garsika' }, { id: 'v50', name: 'Kankar Kiari', gp: 'Tarabari' },
+            { id: 'v51', name: 'Kashikunri', gp: 'Santuri' }, { id: 'v52', name: 'Kashtagora', gp: 'Balitora' },
+            { id: 'v53', name: 'Kendberya', gp: 'Tarabari' }, { id: 'v54', name: 'Kendthol', gp: 'Garsika' },
+            { id: 'v55', name: 'Kharbana', gp: 'Muradi' }, { id: 'v56', name: 'Kharbar', gp: 'Garsika' },
+            { id: 'v57', name: 'Khayerbasia Chak', gp: 'Santuri' }, { id: 'v58', name: 'Kherad', gp: 'Tarabari' },
+            { id: 'v59', name: 'Kinaidih', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v60', name: 'Krishnapur', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v61', name: 'Kotaldih', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v62', name: 'Kulai', gp: 'Garsika' },
+            { id: 'v63', name: 'Kushtor', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v64', name: 'Kushunda', gp: 'Santuri' },
+            { id: 'v65', name: 'Lalgar', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v66', name: 'Lapahari', gp: 'Tarabari' },
+            { id: 'v67', name: 'Latulbad', gp: 'Tarabari' }, { id: 'v68', name: 'Ledasan', gp: 'Tarabari' },
+            { id: 'v69', name: 'Lediam', gp: 'Santuri' }, { id: 'v70', name: 'Madhubanpur', gp: 'Muradi' },
+            { id: 'v71', name: 'Madhukunda Alias Mokura', gp: 'Balitora' }, { id: 'v72', name: 'Malibana', gp: 'Tarabari' },
+            { id: 'v73', name: 'Manjuri', gp: 'Santuri' }, { id: 'v74', name: 'Manpur', gp: 'Balitora' },
+            { id: 'v75', name: 'Marbedya', gp: 'Garsika' }, { id: 'v76', name: 'Matidundra', gp: 'Garsika' },
+            { id: 'v77', name: 'Mejharadi', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v78', name: 'Mohanpur', gp: 'Balitora' },
+            { id: 'v79', name: 'Moraldi', gp: 'Tarabari' }, { id: 'v80', name: 'Muktipur', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v81', name: 'Muraddi', gp: 'Muradi' }, { id: 'v82', name: 'Murulia', gp: 'Muradi' },
+            { id: 'v83', name: 'Nabaghanadi Alias Patharbad', gp: 'Muradi' }, { id: 'v84', name: 'Nichintapur', gp: 'Balitora' },
+            { id: 'v85', name: 'Nimtikuri', gp: 'Santuri' }, { id: 'v86', name: 'Nuhuchibad', gp: 'Tarabari' },
+            { id: 'v87', name: 'Pachandapur', gp: 'Balitora' }, { id: 'v88', name: 'Palash Pahari', gp: 'Garsika' },
+            { id: 'v89', name: 'Pandua Chak', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v90', name: 'Parasigaria', gp: 'Muradi' },
+            { id: 'v91', name: 'Pirargorya', gp: 'Santuri' }, { id: 'v92', name: 'Poradiha', gp: 'Balitora' },
+            { id: 'v93', name: 'Rakta', gp: 'Balitora' }, { id: 'v94', name: 'Rambhatdi', gp: 'Tarabari' },
+            { id: 'v95', name: 'Ramchandrapur', gp: 'Ramchandrapur-Kotaldi' }, { id: 'v96', name: 'Salberya', gp: 'Santuri' },
+            { id: 'v97', name: 'Santuri', gp: 'Santuri' }, { id: 'v98', name: 'Saoradi', gp: 'Ramchandrapur-Kotaldi' },
+            { id: 'v99', name: 'Sashpur', gp: 'Balitora' }, { id: 'v100', name: 'Shaltora', gp: 'Tarabari' },
+            { id: 'v101', name: 'Shunuri', gp: 'Balitora' }, { id: 'v102', name: 'Talberya', gp: 'Santuri' },
+            { id: 'v103', name: 'Tarabari', gp: 'Tarabari' }, { id: 'v104', name: 'Teashi', gp: 'Garsika' }
         ];
 
         let state = {
-            currentPage: 'home',
-            activeTournamentId: null,
-            isAdminLoggedIn: false,
-            players: [], 
+            players: [],
             tournaments: [],
-            tournamentTab: 'Upcoming',
-            tournamentSearch: '',
-            tournamentSportFilter: 'All',
-            tournamentGpFilter: 'All',
-            playerSearch: '',
-            playerSportFilter: 'All'
+            currentPage: 'home',
+            activeTab: 'Upcoming'
         };
-
-        const NAV_ITEMS = ['HOME', 'PLAYERS', 'SPORTS', 'TOURNAMENTS', 'PANCHAYATS', 'REGISTER', 'ABOUT'];
-
-        function getVillageData(id) {
-            return VILLAGES.find(v => v.id === id) || { name: 'Unknown', gp: 'Unknown' };
-        }
 
         function calculateStatus(t) {
             if (t.statusOverride && t.statusOverride !== 'Automatic') return t.statusOverride;
@@ -146,814 +379,322 @@
             return 'Past';
         }
 
-        function getCountdown(startDate) {
-            const start = new Date(startDate);
-            const now = new Date();
-            start.setHours(0,0,0,0);
-            now.setHours(0,0,0,0);
-            const diffDays = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
-            if (diffDays === 0) return 'Starts Today';
-            if (diffDays === 1) return 'Starts Tomorrow';
-            if (diffDays > 1) return `Starts in ${diffDays} Days`;
-            return '';
-        }
-
-        function render() {
-            const root = document.getElementById('app-root');
-            renderNav();
+        function renderTournaments(tourneyList = state.tournaments, targetGridId = 'tournaments-grid', useFilter = true) {
+            const grid = document.getElementById(targetGridId);
+            if (!grid) return;
             
-            root.classList.remove('fade-in');
-            void root.offsetWidth; // Trigger reflow
-            root.classList.add('fade-in');
-
-            switch(state.currentPage) {
-                case 'home': root.innerHTML = getHomeHTML(); break;
-                case 'tournaments': root.innerHTML = getTournamentsHTML(); attachTournamentEvents(); break;
-                case 'tournament-detail': root.innerHTML = getTournamentDetailHTML(); break;
-                case 'players': root.innerHTML = getPlayersHTML(); attachPlayerEvents(); break;
-                case 'register': root.innerHTML = getRegisterHTML(); attachRegisterEvents(); break;
-                case 'admin': 
-                    if (state.isAdminLoggedIn) {
-                        root.innerHTML = getAdminDashboardHTML();
-                        attachAdminEvents();
-                    } else {
-                        root.innerHTML = getAdminLoginHTML();
-                    }
-                    break;
-                default: 
-                    root.innerHTML = `<div class="p-20 text-center max-w-2xl mx-auto"><h2 class="text-3xl font-black mb-4 uppercase">${state.currentPage}</h2><p class="text-gray-500 mb-6">This module is part of the broader Santuri Sports Hub ecosystem.</p><button onclick="navigate('home')" class="text-blue-600 hover:underline font-bold">Return to Home</button></div>`;
-            }
-        }
-
-        function navigate(page, id = null) {
-            state.currentPage = page;
-            if (id) state.activeTournamentId = id;
-            window.scrollTo(0, 0);
-            render();
-        }
-
-        function renderNav() {
-            const desk = document.getElementById('desktop-nav');
-            const mob = document.getElementById('mobile-nav');
-            
-            desk.innerHTML = NAV_ITEMS.map(item => `
-                <button onclick="navigate('${item.toLowerCase()}')" 
-                        class="px-3 py-2 rounded transition-colors font-bold ${state.currentPage === item.toLowerCase() ? 'bg-gray-800 text-blue-400' : 'text-gray-300 hover:bg-gray-800'}">
-                    ${item}
-                </button>
-            `).join('') + `<button onclick="navigate('admin')" class="px-3 py-2 text-yellow-400 hover:bg-gray-800 rounded border border-gray-700 ml-4 font-bold transition-colors">ADMIN LOGIN</button>`;
-
-            mob.innerHTML = ['HOME', 'PLAYERS', 'TOURNAMENTS', 'REGISTER', 'ADMIN'].map(item => `
-                <button onclick="navigate('${item.toLowerCase()}')" class="whitespace-nowrap text-gray-300 font-bold ${state.currentPage === item.toLowerCase() ? 'text-blue-400' : ''}">${item}</button>
-            `).join('');
-        }
-
-        function getHomeHTML() {
-            const liveTourney = state.tournaments.find(t => calculateStatus(t) === 'Live');
-            return `
-                <div class="bg-blue-900 text-white py-20 px-4 text-center">
-                    <h1 class="text-4xl md:text-6xl font-black mb-4 tracking-tight">Santuri Sports Hub</h1>
-                    <p class="text-lg md:text-xl text-blue-200 max-w-2xl mx-auto mb-8">Players • Sports • Tournaments • Villages • Talent</p>
-                    <button onclick="navigate('tournaments')" class="bg-white text-blue-900 font-black py-3 px-8 rounded-lg shadow-lg hover:bg-gray-100 transition">Explore Tournaments</button>
-                </div>
+            let filtered = tourneyList;
+            if (useFilter) {
+                const search = document.getElementById('tournament-search')?.value.toLowerCase() || '';
+                const sport = document.getElementById('tournament-sport-filter')?.value || 'All';
                 
-                <div class="max-w-7xl mx-auto px-4 py-16">
-                    <div class="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
-                        <div>
-                            <h2 class="text-3xl font-black text-gray-900">Tournaments</h2>
-                            <p class="text-gray-500 mt-1">Latest action in Santuri Block</p>
-                        </div>
-                        <button onclick="navigate('tournaments')" class="text-blue-600 font-bold hover:underline">View All &rarr;</button>
-                    </div>
-
-                    ${liveTourney ? `
-                    <div class="mb-8 p-1 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 shadow-sm cursor-pointer hover:shadow-md transition" onclick="navigate('tournament-detail', '${liveTourney.id}')">
-                        <div class="bg-white rounded-lg p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div>
-                                <span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded mb-2 inline-block shadow-sm">🔴 LIVE NOW</span>
-                                <h3 class="text-xl font-bold text-gray-900">${liveTourney.name}</h3>
-                            </div>
-                            <button class="bg-gray-900 text-white px-6 py-2 rounded-lg font-medium whitespace-nowrap">View Live</button>
-                        </div>
-                    </div>` : ''}
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        ${state.tournaments.slice(0, 3).map(getTournamentCardHTML).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function getTournamentCardHTML(t) {
-            const status = calculateStatus(t);
-            const vData = getVillageData(t.villageId);
-            
-            let badgeHTML = '';
-            if (status === 'Live') badgeHTML = `<span class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow flex items-center gap-1 animate-pulse"><span class="w-2 h-2 bg-white rounded-full"></span> LIVE NOW</span>`;
-            else if (status === 'Upcoming') badgeHTML = `<span class="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-black shadow">UPCOMING</span>`;
-            else if (status === 'Past') badgeHTML = `<span class="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-black shadow">PAST</span>`;
-            else badgeHTML = `<span class="bg-gray-700 text-white px-3 py-1 rounded-full text-xs font-black shadow uppercase">${status}</span>`;
-
-            return `
-                <div onclick="navigate('tournament-detail', '${t.id}')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col h-full">
-                    <div class="h-48 bg-gray-200 relative">
-                        <img src="${t.posterUrl || 'https://placehold.co/800x400/e2e8f0/475569?text=No+Poster'}" class="w-full h-full object-cover">
-                        <div class="absolute top-3 right-3 flex flex-col gap-2 items-end">${badgeHTML}</div>
-                        <div class="absolute top-3 left-3">
-                            <span class="bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-black shadow-sm text-gray-800">
-                                ${t.sport} ${t.sport === 'Cricket' && t.type ? `• ${t.type}` : ''}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="p-5 flex flex-col flex-grow">
-                        ${status === 'Upcoming' ? `<div class="mb-2 text-amber-600 font-bold text-xs uppercase tracking-wider">${getCountdown(t.startDate)}</div>` : ''}
-                        
-                        <h3 class="font-black text-xl leading-tight mb-3 text-gray-900">${t.name}</h3>
-                        
-                        <div class="space-y-2 mb-4 text-sm text-gray-600 font-medium flex-grow">
-                            <p class="flex items-center gap-2">📅 ${t.startDate} ${t.endDate && t.endDate !== t.startDate ? `- ${t.endDate}` : ''}</p>
-                            <p class="flex items-center gap-2">📍 ${t.venue}, ${vData.name} (${vData.gp} GP)</p>
-                        </div>
-                        
-                        ${status === 'Live' && t.liveUpdates?.score ? `
-                        <div class="mt-2 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <p class="text-xs text-gray-500 font-bold uppercase mb-1">${t.liveUpdates.stage}</p>
-                            <p class="text-sm font-black text-gray-900">${t.liveUpdates.score}</p>
-                        </div>` : ''}
-                        
-                        ${status === 'Live' && (!t.liveUpdates || !t.liveUpdates.score) ? `
-                        <div class="mt-2 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center"><p class="text-sm italic text-gray-500 font-medium">Updates coming soon</p></div>
-                        ` : ''}
-
-                        ${status === 'Past' && t.results?.winner ? `
-                        <div class="mt-2 mb-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                            <p class="text-xs text-yellow-700 font-bold uppercase mb-1">Winner</p>
-                            <p class="text-sm font-black text-yellow-900">${t.results.winner}</p>
-                        </div>` : ''}
-
-                        <button class="w-full mt-auto bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 rounded-lg transition-colors">VIEW TOURNAMENT</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getTournamentsHTML() {
-            const filtered = state.tournaments.filter(t => {
-                const status = calculateStatus(t);
-                const sMatch = status === state.tournamentTab;
-                const txtMatch = t.name.toLowerCase().includes(state.tournamentSearch.toLowerCase()) || t.venue.toLowerCase().includes(state.tournamentSearch.toLowerCase());
-                const sportMatch = state.tournamentSportFilter === 'All' || t.sport === state.tournamentSportFilter;
-                const gpMatch = state.tournamentGpFilter === 'All' || t.gpId === state.tournamentGpFilter;
-                return sMatch && txtMatch && sportMatch && gpMatch;
-            });
-
-            return `
-                <div class="max-w-7xl mx-auto px-4 py-8">
-                    <div class="mb-8">
-                        <h1 class="text-3xl md:text-5xl font-black text-gray-900 mb-2 tracking-tight">Tournaments</h1>
-                        <p class="text-gray-500 font-medium text-lg">Discover, track, and manage sports tournaments.</p>
-                    </div>
-                    
-                    <div class="flex bg-gray-200 p-1.5 rounded-xl mb-6 w-full md:w-fit mx-auto md:mx-0">
-                        ${['Upcoming', 'Live', 'Past'].map(tab => `
-                            <button onclick="setTournamentTab('${tab}')" class="flex-1 md:px-10 py-3 rounded-lg text-sm font-black transition-all ${state.tournamentTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
-                                ${tab === 'Live' && state.tournamentTab === 'Live' ? '<span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>' : ''}
-                                ${tab.toUpperCase()}
-                            </button>
-                        `).join('')}
-                    </div>
-
-                    <div class="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                        <input type="text" id="tSearch" value="${state.tournamentSearch}" placeholder="Search tournaments, venues, organizers..." class="flex-grow border border-gray-300 rounded-lg p-3 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-                        <div class="flex gap-2">
-                            <select id="tSportFilter" class="border border-gray-300 rounded-lg p-3 font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700 text-sm cursor-pointer">
-                                <option value="All">All Sports</option>
-                                ${SPORTS.map(s => `<option value="${s}" ${state.tournamentSportFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
-                            </select>
-                            <select id="tGpFilter" class="border border-gray-300 rounded-lg p-3 font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700 text-sm cursor-pointer">
-                                <option value="All">All Panchayats</option>
-                                ${PANCHAYATS.map(gp => `<option value="${gp}" ${state.tournamentGpFilter === gp ? 'selected' : ''}>${gp}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-
-                    ${filtered.length === 0 ? `
-                        <div class="text-center py-20 bg-white border border-gray-200 border-dashed rounded-2xl shadow-sm">
-                            <h3 class="text-xl font-bold text-gray-900 mb-2">No ${state.tournamentTab.toLowerCase()} tournaments found.</h3>
-                            <p class="text-gray-500 font-medium">Check back later or adjust your search.</p>
-                        </div>
-                    ` : `
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            ${filtered.map(getTournamentCardHTML).join('')}
-                        </div>
-                    `}
-                </div>
-            `;
-        }
-
-        function setTournamentTab(tab) { state.tournamentTab = tab; render(); }
-        
-        function attachTournamentEvents() {
-            const ts = document.getElementById('tSearch');
-            const tsp = document.getElementById('tSportFilter');
-            const tgp = document.getElementById('tGpFilter');
-            if(ts) ts.addEventListener('input', (e) => { state.tournamentSearch = e.target.value; render(); });
-            if(tsp) tsp.addEventListener('change', (e) => { state.tournamentSportFilter = e.target.value; render(); });
-            if(tgp) tgp.addEventListener('change', (e) => { state.tournamentGpFilter = e.target.value; render(); });
-        }
-
-        function getTournamentDetailHTML() {
-            const t = state.tournaments.find(x => x.id === state.activeTournamentId);
-            if(!t) return `<div class="p-10 text-center text-red-500 font-bold">Tournament not found</div>`;
-            const vData = getVillageData(t.villageId);
-            const status = calculateStatus(t);
-
-            return `
-                <div class="bg-gray-900 text-white relative border-b-8 border-blue-600">
-                    <div class="absolute inset-0 opacity-20"><img src="${t.posterUrl || 'https://placehold.co/1200x400/111827/475569?text=Santuri+Sports'}" class="w-full h-full object-cover"></div>
-                    <div class="relative max-w-7xl mx-auto px-4 py-8 md:py-16">
-                        <button onclick="navigate('tournaments')" class="text-gray-400 hover:text-white mb-8 font-bold flex items-center gap-2 transition-colors">&larr; Back to Tournaments</button>
-                        <div class="flex flex-col md:flex-row gap-8 items-start">
-                            <img src="${t.posterUrl || 'https://placehold.co/400x400/e2e8f0/475569?text=No+Poster'}" class="w-full md:w-1/3 rounded-xl shadow-2xl border-4 border-gray-800 object-cover aspect-video md:aspect-square">
-                            <div class="flex-1">
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${status === 'Live' ? `<span class="bg-red-600 px-3 py-1 rounded-full text-xs font-black shadow-sm flex items-center gap-1 animate-pulse"><span class="w-2 h-2 bg-white rounded-full"></span> LIVE NOW</span>` : ''}
-                                    ${status === 'Upcoming' ? `<span class="bg-amber-500 px-3 py-1 rounded-full text-xs font-black shadow">UPCOMING</span>` : ''}
-                                    ${status === 'Past' ? `<span class="bg-gray-600 px-3 py-1 rounded-full text-xs font-black shadow">PAST</span>` : ''}
-                                    <span class="bg-blue-600 px-3 py-1 rounded-full text-xs font-black shadow">${t.sport}</span>
-                                    <span class="bg-indigo-600 px-3 py-1 rounded-full text-xs font-black shadow">${t.type || 'Open Tournament'}</span>
-                                </div>
-                                <h1 class="text-3xl md:text-5xl font-black mb-6 leading-tight">${t.name}</h1>
-                                
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-300 mt-6 font-medium">
-                                    <div class="bg-gray-800/80 p-4 rounded-xl backdrop-blur">
-                                        <p class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Date</p>
-                                        <p>${t.startDate} ${t.endDate && t.endDate !== t.startDate ? `to ${t.endDate}` : ''}</p>
-                                        <p class="text-sm mt-1">${t.startTime || 'TBD'} - ${t.endTime || 'TBD'}</p>
-                                    </div>
-                                    <div class="bg-gray-800/80 p-4 rounded-xl backdrop-blur">
-                                        <p class="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Venue</p>
-                                        <p>${t.venue}</p>
-                                        <p class="text-sm mt-1">${vData.name}, ${vData.gp} GP</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-8">
-                        ${status === 'Live' && t.liveUpdates?.score ? `
-                            <div class="bg-white p-8 rounded-2xl shadow-sm border-2 border-red-100">
-                                <div class="flex items-center gap-2 mb-4"><span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span><h2 class="text-2xl font-black text-gray-900">Live Updates</h2></div>
-                                <div class="text-center p-8 bg-gray-50 rounded-xl border border-gray-100">
-                                    <p class="text-sm font-black text-gray-500 uppercase tracking-wide mb-2">${t.liveUpdates.stage}</p>
-                                    <p class="text-3xl font-black text-gray-900">${t.liveUpdates.score}</p>
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${status === 'Past' && t.results ? `
-                            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                                <h2 class="text-2xl font-black text-gray-900 mb-6">Tournament Results</h2>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    ${t.results.winner ? `<div class="bg-yellow-50 p-6 rounded-xl border border-yellow-200"><p class="text-xs text-yellow-600 font-black uppercase tracking-wider mb-2">Champions</p><p class="text-2xl font-black text-yellow-900">${t.results.winner}</p></div>` : ''}
-                                    ${t.results.runnerUp ? `<div class="bg-gray-50 p-6 rounded-xl border border-gray-200"><p class="text-xs text-gray-500 font-black uppercase tracking-wider mb-2">Runners-Up</p><p class="text-xl font-black text-gray-800">${t.results.runnerUp}</p></div>` : ''}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                            <h2 class="text-2xl font-black text-gray-900 mb-4">About Tournament</h2>
-                            <p class="text-gray-700 font-medium whitespace-pre-wrap leading-relaxed">${t.description || 'No description provided.'}</p>
-                        </div>
-                    </div>
-
-                    <div class="space-y-6">
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                            <h3 class="font-black text-gray-900 mb-4 text-lg border-b pb-2">Organizer Details</h3>
-                            <div class="space-y-4 text-sm font-medium pt-2">
-                                <div><p class="text-gray-500 mb-1">Organized by</p><p class="font-bold text-gray-900 text-base">${t.organizer}</p></div>
-                                ${t.isContactPublic && t.organizerContact ? `<div><p class="text-gray-500 mb-1">Contact</p><p class="font-bold text-blue-600 text-base">${t.organizerContact}</p></div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getPlayersHTML() {
-            const filtered = state.players.filter(p => 
-                p.name.toLowerCase().includes(state.playerSearch.toLowerCase()) &&
-                (state.playerSportFilter === 'All' || p.sport === state.playerSportFilter)
-            );
-            
-            return `
-                <div class="max-w-7xl mx-auto px-4 py-8">
-                    <div class="mb-8">
-                        <h1 class="text-3xl md:text-5xl font-black text-gray-900 mb-2 tracking-tight">Player Database</h1>
-                        <p class="text-gray-500 font-medium text-lg">Registered talent across Santuri Block.</p>
-                    </div>
-
-                    <div class="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                        <input type="text" id="pSearch" value="${state.playerSearch}" placeholder="Search players by name..." class="flex-grow border border-gray-300 rounded-lg p-3 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <select id="pSportFilter" class="border border-gray-300 rounded-lg p-3 font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700 cursor-pointer">
-                            <option value="All">All Sports</option>
-                            ${SPORTS.map(s => `<option value="${s}" ${state.playerSportFilter === s ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select>
-                    </div>
-                    
-                    ${filtered.length === 0 ? `
-                        <div class="text-center py-20 bg-white border border-gray-200 border-dashed rounded-2xl shadow-sm">
-                            <h3 class="text-xl font-bold text-gray-900 mb-2">No players found.</h3>
-                            <p class="text-gray-500 font-medium">Try adjusting your search filters.</p>
-                        </div>
-                    ` : `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        ${filtered.map(p => {
-                            const v = getVillageData(p.villageId);
-                            return `
-                            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-lg transition-shadow">
-                                ${p.photoUrl ? `
-                                <img src="${p.photoUrl}" alt="${p.name}" class="w-20 h-20 object-cover rounded-full mx-auto mb-4 border-4 border-blue-50 shadow-sm">
-                                ` : `
-                                <div class="w-20 h-20 bg-blue-100 border-4 border-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-black text-blue-600 uppercase tracking-tighter shadow-sm">
-                                    ${p.name.charAt(0)}
-                                </div>
-                                `}
-                                <h3 class="font-black text-xl text-gray-900 mb-2 leading-tight">${p.name}</h3>
-                                <div class="mb-4">
-                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-black shadow-sm">${p.sport}</span>
-                                    ${p.role ? `<span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-black shadow-sm ml-1">${p.role}</span>` : ''}
-                                </div>
-                                <div class="mt-auto pt-4 border-t border-gray-100 w-full">
-                                    <p class="text-sm font-bold text-gray-700">${v.name}</p>
-                                    <p class="text-xs text-gray-500 font-black uppercase tracking-widest mt-1">${v.gp} GP</p>
-                                </div>
-                            </div>
-                            `;
-                        }).join('')}
-                    </div>
-                    `}
-                </div>
-            `;
-        }
-
-        function attachPlayerEvents() {
-            const ps = document.getElementById('pSearch');
-            const pf = document.getElementById('pSportFilter');
-            if(ps) ps.addEventListener('input', (e) => { state.playerSearch = e.target.value; render(); });
-            if(pf) pf.addEventListener('change', (e) => { state.playerSportFilter = e.target.value; render(); });
-        }
-
-        function getRegisterHTML() {
-            return `
-                <div class="max-w-3xl mx-auto px-4 py-12">
-                    <h1 class="text-3xl md:text-5xl font-black mb-3 tracking-tight">Player Registration</h1>
-                    <p class="text-gray-600 font-medium mb-8 text-lg">Join the official sports database of Santuri Block to participate in upcoming tournaments.</p>
-
-                    <div id="regSuccessMsg" class="hidden mb-6 bg-green-50 border border-green-200 text-green-800 p-6 rounded-2xl shadow-sm text-center">
-                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600 text-3xl font-black">✓</div>
-                        <h3 class="font-black text-2xl mb-2">Registration Successful!</h3>
-                        <p class="font-medium mb-6">Welcome to the Santuri Sports Hub player database.</p>
-                        <div class="flex justify-center gap-4">
-                            <button onclick="navigate('register')" class="bg-white border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-50">Register Another</button>
-                            <button onclick="navigate('players')" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm">View Database</button>
-                        </div>
-                    </div>
-
-                    <form id="registerForm" class="bg-white p-6 md:p-10 rounded-2xl border border-gray-200 shadow-sm space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-black text-gray-700 mb-2">Full Name *</label>
-                                <input type="text" id="regName" required placeholder="Enter your full name" class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-black text-gray-700 mb-2">Phone Number *</label>
-                                <input type="tel" id="regPhone" required placeholder="10-digit mobile number" pattern="[0-9]{10}" class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-black text-gray-700 mb-2">Age</label>
-                                <input type="number" id="regAge" min="5" max="100" placeholder="Years" class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors">
-                            </div>
-
-                            <!-- Autocomplete Village Mapping -->
-                            <div class="md:col-span-2 relative">
-                                <label class="block text-sm font-black text-gray-700 mb-2">Village *</label>
-                                <input type="hidden" id="regVillageId" required>
-                                <input type="text" id="regVillageSearch" autocomplete="off" placeholder="Type to search village..." class="w-full border border-gray-300 rounded-xl p-4 font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors cursor-text">
-                                <ul id="regVillageDropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                                    <!-- Populated via JS -->
-                                </ul>
-                            </div>
-
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-black text-gray-700 mb-2">Gram Panchayat</label>
-                                <input type="text" id="regGpDisplay" readonly placeholder="Auto-fills based on village" class="w-full border border-gray-200 bg-gray-100 rounded-xl p-4 text-gray-500 font-bold uppercase tracking-wider">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-black text-gray-700 mb-2">Primary Sport *</label>
-                                <select id="regSport" required class="w-full border border-gray-300 rounded-xl p-4 font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors cursor-pointer">
-                                    ${SPORTS.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-black text-gray-700 mb-2">Role</label>
-                                <select id="regRole" class="w-full border border-gray-300 rounded-xl p-4 font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors cursor-pointer">
-                                    <option value="Player">Player</option>
-                                    <option value="Captain">Captain</option>
-                                    <option value="Coach">Coach</option>
-                                    <option value="Umpire/Referee">Umpire / Referee</option>
-                                </select>
-                            </div>
-
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-black text-gray-700 mb-2">Profile Photo (Optional)</label>
-                                <div id="photoDropzone" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 transition-colors bg-gray-50 cursor-pointer relative" onclick="document.getElementById('regPhoto').click()">
-                                    <div class="space-y-1 text-center" id="photoPreviewContainer">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                                        </svg>
-                                        <div class="flex text-sm text-gray-600 justify-center mt-2">
-                                            <span class="relative cursor-pointer bg-transparent rounded-md font-bold text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                                Upload a photo
-                                            </span>
-                                            <input id="regPhoto" name="regPhoto" type="file" class="sr-only" accept="image/*">
-                                            <p class="pl-1 font-medium" id="photoDragText">or drag and drop</p>
-                                        </div>
-                                        <p class="text-xs text-gray-500 font-medium">PNG, JPG up to 5MB</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="pt-8 border-t border-gray-100 flex justify-end">
-                            <button type="submit" class="w-full md:w-auto bg-blue-600 text-white font-black py-4 px-10 rounded-xl shadow-lg hover:bg-blue-700 transition-colors text-lg">Register Player</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
-
-        function setupAutocomplete(searchInputId, dropdownId, hiddenId, displayGpId) {
-            const searchInput = document.getElementById(searchInputId);
-            const dropdown = document.getElementById(dropdownId);
-            const hidden = document.getElementById(hiddenId);
-            const gpDisplay = document.getElementById(displayGpId);
-
-            if (!searchInput || !dropdown) return;
-
-            const renderDropdown = (term) => {
-                const filtered = VILLAGES.filter(v => v.name.toLowerCase().includes(term.toLowerCase()));
-                dropdown.innerHTML = filtered.length > 0 ? filtered.map(v => `
-                    <li data-id="${v.id}" data-name="${v.name}" data-gp="${v.gp}" class="autocomplete-item p-4 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors text-left">
-                        <div class="font-bold text-gray-900 pointer-events-none">${v.name}</div>
-                        <div class="text-xs text-gray-500 uppercase pointer-events-none">${v.gp} GP</div>
-                    </li>
-                `).join('') : `<li class="p-4 text-gray-500 italic text-sm text-left">No villages found</li>`;
-
-                // Attach click handlers to new items
-                dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        hidden.value = item.getAttribute('data-id');
-                        searchInput.value = item.getAttribute('data-name');
-                        if (gpDisplay) gpDisplay.value = item.getAttribute('data-gp') + ' GP';
-                        dropdown.classList.add('hidden');
-                    });
+                filtered = filtered.filter(t => {
+                    const status = calculateStatus(t);
+                    if (status !== state.activeTab) return false;
+                    const searchMatch = t.name.toLowerCase().includes(search) || t.venue.toLowerCase().includes(search);
+                    const sportMatch = sport === 'All' || t.sport === sport;
+                    return searchMatch && sportMatch;
                 });
-            };
+            }
 
-            searchInput.addEventListener('input', (e) => {
-                dropdown.classList.remove('hidden');
-                renderDropdown(e.target.value);
-                hidden.value = ''; // Reset ID when typing
-                if (gpDisplay) gpDisplay.value = '';
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 bg-white rounded-xl border border-gray-200 border-dashed text-gray-500">No tournaments found.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(t => {
+                const status = calculateStatus(t);
+                const v = VILLAGES.find(vil => vil.id === t.villageId);
+                return `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                    <div class="relative h-48 bg-gray-200">
+                        <div class="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                            ${status === 'Live' ? `<span class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm animate-pulse">🔴 LIVE NOW</span>` : ''}
+                            ${status === 'Upcoming' ? `<span class="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">UPCOMING</span>` : ''}
+                            ${status === 'Past' ? `<span class="bg-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">PAST</span>` : ''}
+                        </div>
+                        <div class="absolute top-3 left-3">
+                            <span class="bg-white text-gray-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm">${t.sport}</span>
+                        </div>
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h3 class="font-bold text-lg leading-tight mb-2 text-gray-900">${t.name}</h3>
+                        <p class="text-sm text-gray-600 mb-1">📅 ${t.startDate}</p>
+                        <p class="text-sm text-gray-600 mb-4">📍 ${t.venue} (${v ? v.name : 'Unknown'})</p>
+                        <button class="w-full mt-auto bg-gray-900 hover:bg-gray-800 text-white font-medium py-2 rounded-lg transition-colors">VIEW TOURNAMENT</button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderPlayers() {
+            const grid = document.getElementById('players-grid');
+            if (!grid) return;
+            
+            const search = document.getElementById('player-search')?.value.toLowerCase() || '';
+            const sport = document.getElementById('player-sport-filter')?.value || 'All';
+
+            const filtered = state.players.filter(p => {
+                const matchSearch = p.name.toLowerCase().includes(search);
+                const matchSport = sport === 'All' || p.sport === sport;
+                return matchSearch && matchSport;
             });
 
-            searchInput.addEventListener('focus', (e) => {
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 bg-white rounded-xl border border-gray-200 border-dashed text-gray-500">No players found.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(p => {
+                const v = VILLAGES.find(vil => vil.id === p.villageId);
+                const avatar = p.photoUrl ? `<img src="${p.photoUrl}" class="w-20 h-20 rounded-full object-cover mb-4 border-4 border-blue-50">` : `<div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-600 text-2xl font-bold">${p.name.charAt(0)}</div>`;
+                return `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col items-center text-center">
+                    ${avatar}
+                    <h3 class="font-bold text-lg text-gray-900 mb-1">${p.name}</h3>
+                    <p class="text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-800 rounded-full mb-3">${p.sport}</p>
+                    <div class="mt-auto pt-4 border-t border-gray-100 w-full">
+                        <p class="text-sm font-medium text-gray-700">${v ? v.name : 'Unknown'}</p>
+                        <p class="text-xs text-gray-500 uppercase">${v ? v.gp : ''} GP</p>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function setupAutocomplete(searchInputId, dropdownId, hiddenInputId, gpDisplayId = null) {
+            const input = document.getElementById(searchInputId);
+            const dropdown = document.getElementById(dropdownId);
+            const hidden = document.getElementById(hiddenInputId);
+            const gpDisplay = gpDisplayId ? document.getElementById(gpDisplayId) : null;
+            
+            if(!input || !dropdown) return;
+
+            input.addEventListener('input', () => {
+                hidden.value = ''; 
+                if(gpDisplay) gpDisplay.value = '';
+                const val = input.value.toLowerCase();
+                dropdown.innerHTML = '';
+                if (!val) { dropdown.classList.add('hidden'); return; }
+                
+                const matches = VILLAGES.filter(v => v.name.toLowerCase().includes(val));
+                if (matches.length > 0) {
+                    matches.forEach(v => {
+                        const li = document.createElement('li');
+                        li.className = 'p-3 cursor-pointer border-b border-gray-100 text-left dropdown-item';
+                        li.innerHTML = `<div class="font-bold text-gray-900">${v.name}</div><div class="text-xs text-gray-500 uppercase">${v.gp} GP</div>`;
+                        li.onclick = () => {
+                            input.value = v.name;
+                            hidden.value = v.id;
+                            if(gpDisplay) gpDisplay.value = v.gp;
+                            dropdown.classList.add('hidden');
+                        };
+                        dropdown.appendChild(li);
+                    });
+                } else {
+                    dropdown.innerHTML = `<li class="p-3 text-gray-500 italic text-sm text-left">No villages found</li>`;
+                }
                 dropdown.classList.remove('hidden');
-                renderDropdown(e.target.value);
             });
 
             document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
                     dropdown.classList.add('hidden');
                 }
             });
         }
 
-        function setupPhotoDropzone(inputId, dropzoneId, previewContainerId) {
-            const photoInput = document.getElementById(inputId);
-            const dropzone = document.getElementById(dropzoneId);
-            const previewContainer = document.getElementById(previewContainerId);
+        function setupPhotoDropzone() {
+            const input = document.getElementById('regPhoto');
+            const preview = document.getElementById('photoPreviewContainer');
+            if(!input || !preview) return;
 
-            if (!photoInput || !dropzone) return;
-
-            photoInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const url = URL.createObjectURL(file);
-                    previewContainer.innerHTML = `
-                        <img src="${url}" class="mx-auto h-24 w-24 object-cover rounded-xl shadow-sm border-2 border-white">
-                        <div class="flex text-sm text-gray-600 justify-center mt-2">
-                            <span class="relative cursor-pointer bg-transparent rounded-md font-bold text-blue-600 hover:text-blue-500">Change Photo</span>
-                        </div>
-                    `;
-                }
-            });
-
-            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-blue-500', 'bg-blue-50'); });
-            dropzone.addEventListener('dragleave', (e) => { e.preventDefault(); dropzone.classList.remove('border-blue-500', 'bg-blue-50'); });
-            dropzone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('border-blue-500', 'bg-blue-50');
-                if (e.dataTransfer.files.length) {
-                    photoInput.files = e.dataTransfer.files;
-                    photoInput.dispatchEvent(new Event('change'));
-                }
-            });
-        }
-
-        function attachRegisterEvents() {
-            setupAutocomplete('regVillageSearch', 'regVillageDropdown', 'regVillageId', 'regGpDisplay');
-            setupPhotoDropzone('regPhoto', 'photoDropzone', 'photoPreviewContainer');
-
-            const form = document.getElementById('registerForm');
-            if(!form) return;
-
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const submitBtn = form.querySelector('button[type="submit"]');
-                const originalBtnText = submitBtn.innerText;
-                submitBtn.innerText = "Registering Player...";
-                submitBtn.disabled = true;
-
-                const name = document.getElementById('regName').value.trim();
-                const phone = document.getElementById('regPhone').value.trim();
-                const age = document.getElementById('regAge').value;
-                const vId = document.getElementById('regVillageId').value;
-                const sport = document.getElementById('regSport').value;
-                const role = document.getElementById('regRole').value;
-                const photoInput = document.getElementById('regPhoto');
-
-                if (!vId) {
-                    alert("Please select a valid Village from the dropdown list.");
-                    submitBtn.innerText = originalBtnText;
-                    submitBtn.disabled = false;
-                    return;
-                }
-
-                try {
-                    let photoUrl = null;
-                    if (photoInput.files && photoInput.files[0]) {
-                        const file = photoInput.files[0];
-                        const storageRef = ref(storage, `artifacts/${systemAppId}/public/data/photos/${Date.now()}_${file.name}`);
-                        const snapshot = await uploadBytes(storageRef, file);
-                        photoUrl = await getDownloadURL(snapshot.ref);
+            input.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
                     }
-
-                    const vData = getVillageData(vId);
-                    const newPlayer = {
-                        name: name,
-                        phone: phone,
-                        age: age ? parseInt(age) : null,
-                        villageId: vId,
-                        gpId: vData.gp,
-                        sport: sport,
-                        role: role,
-                        photoUrl: photoUrl,
-                        createdAt: Date.now()
-                    };
-                    
-                    await addDoc(collection(db, 'artifacts', systemAppId, 'public', 'data', 'players'), newPlayer);
-
-                    form.classList.add('hidden');
-                    document.getElementById('regSuccessMsg').classList.remove('hidden');
-                    window.scrollTo(0, 0);
-                } catch (error) {
-                    console.error("Error registering player:", error);
-                    alert("There was an error saving your registration.");
-                } finally {
-                    submitBtn.innerText = originalBtnText;
-                    submitBtn.disabled = false;
+                    reader.readAsDataURL(e.target.files[0]);
                 }
             });
         }
 
-        function getAdminLoginHTML() {
-            return `
-                <div class="max-w-md mx-auto mt-20 p-8 bg-white rounded-2xl shadow-sm border border-gray-200">
-                    <div class="text-center mb-8">
-                        <h2 class="text-3xl font-black text-gray-900">Admin Access</h2>
-                        <p class="text-gray-500 mt-2 font-medium">Please login to manage tournaments.</p>
-                    </div>
-                    <form onsubmit="handleAdminLogin(event)" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-black text-gray-700 mb-2">User ID</label>
-                            <input type="text" id="adminUser" required class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-black text-gray-700 mb-2">Password</label>
-                            <input type="password" id="adminPass" required class="w-full border border-gray-300 rounded-xl p-4 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50 focus:bg-white transition-colors">
-                        </div>
-                        <p id="loginError" class="text-red-500 text-sm hidden font-bold text-center">Invalid User ID or Password.</p>
-                        <button type="submit" class="w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg hover:bg-gray-800 transition-colors text-lg">Login Securely</button>
-                    </form>
-                </div>
-            `;
-        }
-
-        function handleAdminLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('adminUser').value;
-            const p = document.getElementById('adminPass').value;
-            if (u === 'admin' && p === '1234') {
-                state.isAdminLoggedIn = true;
-                render();
-            } else {
-                document.getElementById('loginError').classList.remove('hidden');
-            }
-        }
-
-        function handleAdminLogout() {
-            state.isAdminLoggedIn = false;
-            navigate('home');
-        }
-
-        function getAdminDashboardHTML() {
-            return `
-                <div class="max-w-5xl mx-auto px-4 py-12">
-                    <div class="flex justify-between items-center mb-8 border-b pb-4">
-                        <h1 class="text-3xl font-black text-gray-900">Admin Panel: Tournaments</h1>
-                        <button onclick="handleAdminLogout()" class="bg-red-100 text-red-600 hover:bg-red-200 font-bold py-2 px-6 rounded-lg transition-colors">Logout</button>
-                    </div>
-
-                    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm mb-8">
-                        <h2 class="text-xl font-black text-gray-900 mb-6 border-b border-gray-100 pb-2">Create New Tournament</h2>
-                        <form id="adminTournamentForm" class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Tournament Name *</label>
-                                    <input type="text" id="tName" required class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Sport *</label>
-                                    <select id="tSport" required class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        ${SPORTS.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Tournament Type</label>
-                                    <input type="text" id="tType" placeholder="e.g. Village Tournament, Tennis Cricket" class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Start Date *</label>
-                                    <input type="date" id="tStartDate" required class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">End Date</label>
-                                    <input type="date" id="tEndDate" class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                
-                                <!-- Village Autocomplete for Admin -->
-                                <div class="md:col-span-2 relative">
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Venue Village *</label>
-                                    <input type="hidden" id="adminVillageId" required>
-                                    <input type="text" id="adminVillageSearch" autocomplete="off" placeholder="Type to search village..." class="w-full border border-gray-300 rounded-lg p-3 font-medium focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:bg-white cursor-text">
-                                    <ul id="adminVillageDropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"></ul>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Venue Name *</label>
-                                    <input type="text" id="tVenue" required placeholder="e.g. High School Ground" class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Organizer</label>
-                                    <input type="text" id="tOrganizer" class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Status Override</label>
-                                    <select id="tStatus" class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        <option value="Automatic">Automatic (Based on Dates)</option>
-                                        <option value="Upcoming">Upcoming</option>
-                                        <option value="Live">Live</option>
-                                        <option value="Past">Past</option>
-                                        <option value="Postponed">Postponed</option>
-                                        <option value="Cancelled">Cancelled</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Tournament Poster</label>
-                                    <input type="file" id="tPoster" accept="image/*" class="w-full border border-gray-300 rounded-lg p-2 bg-gray-50">
-                                </div>
-                            </div>
-                            
-                            <div class="pt-6 border-t border-gray-100 flex justify-end">
-                                <button type="submit" class="bg-blue-600 text-white font-black py-3 px-8 rounded-lg shadow-sm hover:bg-blue-700 transition-colors">Publish Tournament</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-        }
-
-        function attachAdminEvents() {
-            setupAutocomplete('adminVillageSearch', 'adminVillageDropdown', 'adminVillageId', null);
+        window.navigate = function(page, id = null) {
+            state.currentPage = page;
+            document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden-view'));
             
-            const form = document.getElementById('adminTournamentForm');
-            if(!form) return;
+            const specificView = document.getElementById(`view-${page}`);
+            if (specificView) {
+                specificView.classList.remove('hidden-view');
+            } else if (['sports', 'panchayats', 'about'].includes(page)) {
+                document.getElementById('view-generic').classList.remove('hidden-view');
+                document.getElementById('generic-title').innerText = page;
+            }
+            
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('text-blue-400');
+                if (b.dataset.page === page) b.classList.add('text-blue-400');
+            });
+            window.scrollTo(0, 0);
+        };
 
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const submitBtn = form.querySelector('button[type="submit"]');
-                const originalBtnText = submitBtn.innerText;
-                submitBtn.innerText = "Publishing...";
-                submitBtn.disabled = true;
-
-                const vId = document.getElementById('adminVillageId').value;
-                if (!vId) {
-                    alert("Please select a valid Venue Village from the dropdown.");
-                    submitBtn.innerText = originalBtnText;
-                    submitBtn.disabled = false;
-                    return;
-                }
-
-                try {
-                    let posterUrl = null;
-                    const posterInput = document.getElementById('tPoster');
-                    if (posterInput.files && posterInput.files[0]) {
-                        const file = posterInput.files[0];
-                        const storageRef = ref(storage, `artifacts/${systemAppId}/public/data/photos/${Date.now()}_${file.name}`);
-                        const snapshot = await uploadBytes(storageRef, file);
-                        posterUrl = await getDownloadURL(snapshot.ref);
+        window.setTournamentTab = function(tab) {
+            state.activeTab = tab;
+            ['Upcoming', 'Live', 'Past'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) {
+                    if (t === tab) {
+                        btn.classList.remove('tab-inactive');
+                        btn.classList.add('tab-active');
+                    } else {
+                        btn.classList.remove('tab-active');
+                        btn.classList.add('tab-inactive');
                     }
-
-                    const vData = getVillageData(vId);
-                    
-                    const newT = {
-                        name: document.getElementById('tName').value,
-                        sport: document.getElementById('tSport').value,
-                        type: document.getElementById('tType').value,
-                        startDate: document.getElementById('tStartDate').value,
-                        endDate: document.getElementById('tEndDate').value,
-                        venue: document.getElementById('tVenue').value,
-                        villageId: vId,
-                        gpId: vData.gp,
-                        organizer: document.getElementById('tOrganizer').value,
-                        statusOverride: document.getElementById('tStatus').value,
-                        posterUrl: posterUrl,
-                        createdAt: Date.now()
-                    };
-                    
-                    await addDoc(collection(db, 'artifacts', systemAppId, 'public', 'data', 'tournaments'), newT);
-                    
-                    alert("Tournament Published Successfully!");
-                    form.reset();
-                    document.getElementById('adminVillageId').value = '';
-                } catch(err) {
-                    console.error("Error creating tournament", err);
-                    alert("Failed to create tournament.");
-                } finally {
-                    submitBtn.innerText = originalBtnText;
-                    submitBtn.disabled = false;
                 }
             });
+            renderTournaments();
+        };
+
+        function attachEvents() {
+            // Populate Sports Dropdowns
+            const regSport = document.getElementById('regSport');
+            const adminTSport = document.getElementById('adminTSport');
+            const pSportFilter = document.getElementById('player-sport-filter');
+            const tSportFilter = document.getElementById('tournament-sport-filter');
+            
+            const sportOpts = SPORTS.map(s => `<option value="${s}">${s}</option>`).join('');
+            if(regSport) regSport.innerHTML = sportOpts;
+            if(adminTSport) adminTSport.innerHTML = sportOpts;
+            if(pSportFilter) pSportFilter.innerHTML += sportOpts;
+            if(tSportFilter) tSportFilter.innerHTML += sportOpts;
+
+            setupAutocomplete('regVillageSearch', 'regVillageDropdown', 'regVillageId', 'regGpDisplay');
+            setupAutocomplete('adminVillageSearch', 'adminVillageDropdown', 'adminVillageId');
+            setupPhotoDropzone();
+
+            // Admin Login
+            const loginForm = document.getElementById('adminLoginForm');
+            if(loginForm) {
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    if(document.getElementById('adminUser').value === 'admin' && document.getElementById('adminPass').value === '1234') {
+                        window.navigate('admin-dashboard');
+                    } else {
+                        document.getElementById('adminError').classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Player Registration Form
+            const regForm = document.getElementById('registerForm');
+            if(regForm) {
+                regForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!auth.currentUser) {
+                        alert("Database is initializing, please wait a second and try again.");
+                        return;
+                    }
+                    
+                    const btn = regForm.querySelector('button[type="submit"]');
+                    btn.innerText = 'Saving...';
+                    btn.disabled = true;
+
+                    try {
+                        let finalPhotoUrl = null;
+                        const photoFile = document.getElementById('regPhoto').files[0];
+                        if (photoFile) {
+                            const storageRef = ref(storage, `artifacts/${systemAppId}/photos/${Date.now()}_${photoFile.name}`);
+                            const snapshot = await uploadBytes(storageRef, photoFile);
+                            finalPhotoUrl = await getDownloadURL(snapshot.ref);
+                        }
+
+                        const newPlayer = {
+                            name: document.getElementById('regName').value,
+                            phone: document.getElementById('regPhone').value,
+                            age: document.getElementById('regAge').value,
+                            villageId: document.getElementById('regVillageId').value,
+                            sport: document.getElementById('regSport').value,
+                            role: document.getElementById('regRole').value,
+                            photoUrl: finalPhotoUrl,
+                            createdAt: Date.now()
+                        };
+
+                        await addDoc(collection(db, 'artifacts', systemAppId, 'public', 'players'), newPlayer);
+                        regForm.classList.add('hidden');
+                        document.getElementById('regSuccessMsg').classList.remove('hidden');
+                    } catch (err) {
+                        console.error(err);
+                        alert("Failed to save player: " + err.message + "\n\n(Ensure your Firebase Firestore Security Rules are set to allow read/write.)");
+                    } finally {
+                        btn.innerText = 'Submit Registration';
+                        btn.disabled = false;
+                    }
+                });
+            }
+
+            // Admin Tournament Form
+            const tourneyForm = document.getElementById('adminTournamentForm');
+            if(tourneyForm) {
+                tourneyForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!auth.currentUser) { alert("Connecting to DB..."); return; }
+                    
+                    const btn = tourneyForm.querySelector('button[type="submit"]');
+                    btn.innerText = 'Saving...'; btn.disabled = true;
+
+                    try {
+                        const newT = {
+                            name: document.getElementById('adminTName').value,
+                            sport: document.getElementById('adminTSport').value,
+                            statusOverride: document.getElementById('adminTStatus').value,
+                            startDate: document.getElementById('adminTStartDate').value,
+                            endDate: document.getElementById('adminTEndDate').value,
+                            villageId: document.getElementById('adminVillageId').value,
+                            venue: document.getElementById('adminTVenue').value,
+                            organizer: document.getElementById('adminTOrganizer').value,
+                            createdAt: Date.now()
+                        };
+                        await addDoc(collection(db, 'artifacts', systemAppId, 'public', 'tournaments'), newT);
+                        alert("Tournament published successfully!");
+                        tourneyForm.reset();
+                    } catch (err) {
+                        alert("Error saving tournament: " + err.message);
+                    } finally {
+                        btn.innerText = 'Save Tournament'; btn.disabled = false;
+                    }
+                });
+            }
         }
 
         window.onload = async () => {
+            attachEvents();
+            
+            // Process early clicks
+            if (window.__pendingNav) window.navigate(window.__pendingNav.page, window.__pendingNav.id);
+            else window.navigate('home');
+            
+            if (window.__pendingTab) window.setTournamentTab(window.__pendingTab);
+
+            // Auth & Sync Data
             try {
-                // Sign in anonymously to allow Firestore read/write rules
                 await signInAnonymously(auth);
-                const user = auth.currentUser;
                 
-                if (user) {
-                    // Sync Players
-                    onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'data', 'players'), (snapshot) => {
-                        state.players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        render();
-                    }, (err) => console.error("Players fetch error:", err));
+                onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'players'), (snap) => {
+                    state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderPlayers();
+                });
 
-                    // Sync Tournaments
-                    onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'data', 'tournaments'), (snapshot) => {
-                        state.tournaments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        render();
-                    }, (err) => console.error("Tournaments fetch error:", err));
-                }
-            } catch (error) {
-                console.error("Firebase Auth Error:", error);
+                onSnapshot(collection(db, 'artifacts', systemAppId, 'public', 'tournaments'), (snap) => {
+                    state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderTournaments();
+                    renderTournaments(state.tournaments.slice(0, 3), 'home-tournaments-grid', false);
+                });
+            } catch (err) {
+                console.error("Firebase Auth failed:", err);
             }
-            render();
         };
-
     </script>
 </body>
 </html>
