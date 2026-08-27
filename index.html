@@ -665,23 +665,38 @@
             if (tTeams.length === 0) {
                 teamList.innerHTML = `<div class="col-span-full text-center py-6 text-sm text-gray-500 italic bg-gray-50 rounded-lg border border-dashed border-gray-300">No teams registered yet.</div>`;
             } else {
-                teamList.innerHTML = tTeams.map((team, idx) => {
-                    const pCount = state.players.filter(p => p.teamId === team.id).length;
-                    return `
-                    <div onclick="window.navigate('team-detail', '${team.id}')" class="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between shadow-sm active:scale-[0.98] cursor-pointer hover:border-blue-300">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-xs border border-blue-200">${idx+1}</div>
-                            <div>
-                                <div class="flex items-center gap-2">
+                const groupedTeams = {};
+                tTeams.forEach(t => {
+                    const g = t.group || 'Ungrouped';
+                    if(!groupedTeams[g]) groupedTeams[g] = [];
+                    groupedTeams[g].push(t);
+                });
+
+                const sortedGroups = Object.keys(groupedTeams).sort();
+                let teamsHtml = '';
+                
+                sortedGroups.forEach(gName => {
+                    // Display group headers if there are actual groups assigned
+                    if (gName !== 'Ungrouped' || sortedGroups.length > 1) {
+                        teamsHtml += `<div class="col-span-full mt-3 mb-1 border-b-2 border-gray-100 pb-1 flex items-center justify-between"><h4 class="text-xs font-black text-blue-600 uppercase tracking-widest">${gName}</h4><span class="text-[10px] text-gray-400 font-bold">${groupedTeams[gName].length} Teams</span></div>`;
+                    }
+                    
+                    teamsHtml += groupedTeams[gName].map((team, idx) => {
+                        const pCount = state.players.filter(p => p.teamId === team.id).length;
+                        return `
+                        <div onclick="window.navigate('team-detail', '${team.id}')" class="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between shadow-sm active:scale-[0.98] cursor-pointer hover:border-blue-300 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-800 font-black flex items-center justify-center text-xs border border-blue-200 shadow-sm">${idx+1}</div>
+                                <div>
                                     <h4 class="font-bold text-sm text-gray-900">${team.name}</h4>
-                                    ${team.group ? `<span class="bg-purple-100 text-purple-800 text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">${team.group}</span>` : ''}
+                                    <p class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${pCount} Squad Members</p>
                                 </div>
-                                <p class="text-[10px] font-bold text-gray-500 uppercase">${pCount} Squad</p>
                             </div>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m9 18 6-6-6-6"/></svg>
-                    </div>`;
-                }).join('');
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m9 18 6-6-6-6"/></svg>
+                        </div>`;
+                    }).join('');
+                });
+                teamList.innerHTML = teamsHtml;
             }
 
             renderFixtures(t, tTeams);
@@ -788,11 +803,40 @@
                     let matchNo = 1;
 
                     if (tournament.format === 'Knockout') {
-                        let shuffled = [...teams].sort(() => 0.5 - Math.random());
-                        const stageName = teams.length <= 4 ? 'Semi-Final' : (teams.length <= 8 ? 'Quarter-Final' : 'Round of 16');
-                        for (let i = 0; i < shuffled.length; i += 2) {
-                            const t1 = shuffled[i], t2 = shuffled[i+1];
-                            matches.push({ tournamentId: tournament.id, matchNo: matchNo++, stage: stageName, team1Id: t1 ? t1.id : null, team2Id: t2 ? t2.id : null, status: 'Scheduled', createdAt: Date.now() });
+                        // Group teams to separate them on different sides of the bracket
+                        let grouped = {};
+                        teams.forEach(t => {
+                            const g = t.group || 'Ungrouped';
+                            if(!grouped[g]) grouped[g] = [];
+                            grouped[g].push(t);
+                        });
+                        
+                        let sortedTeams = [];
+                        Object.keys(grouped).sort().forEach(g => {
+                            let shuffledGroup = grouped[g].sort(() => 0.5 - Math.random());
+                            sortedTeams.push(...shuffledGroup);
+                        });
+
+                        // Determine base power of 2 (8 or 16) based on tournament size limit
+                        const baseSize = tournament.size <= 8 ? 8 : 16;
+
+                        // Generate Round 1 matches
+                        const r1Name = baseSize === 16 ? 'Round of 16' : 'Quarter-Final';
+                        const r1MatchesCount = baseSize / 2;
+                        for (let i = 0; i < r1MatchesCount; i++) {
+                            const t1 = sortedTeams[i*2] || null;
+                            const t2 = sortedTeams[i*2+1] || null;
+                            matches.push({ tournamentId: tournament.id, matchNo: matchNo++, stage: r1Name, team1Id: t1 ? t1.id : null, team2Id: t2 ? t2.id : null, status: 'Scheduled', createdAt: Date.now() });
+                        }
+
+                        // Generate TBD placeholder matches for subsequent bracket rounds
+                        let nextRoundSize = r1MatchesCount / 2;
+                        while(nextRoundSize >= 1) {
+                            let stageName = nextRoundSize === 4 ? 'Quarter-Final' : (nextRoundSize === 2 ? 'Semi-Final' : 'Final');
+                            for (let i = 0; i < nextRoundSize; i++) {
+                                matches.push({ tournamentId: tournament.id, matchNo: matchNo++, stage: stageName, team1Id: null, team2Id: null, status: 'Scheduled', createdAt: Date.now() });
+                            }
+                            nextRoundSize = nextRoundSize / 2;
                         }
                     } else {
                         for(let i = 0; i < teams.length; i++) {
@@ -906,19 +950,37 @@
 
         window.openResultModal = () => {
             const match = state.fixtures.find(x => x.id === window.__currentMatchId);
-            const t1 = state.teams.find(t => t.id === match.team1Id);
-            const t2 = state.teams.find(t => t.id === match.team2Id);
+            const t1 = match.team1Id ? state.teams.find(t => t.id === match.team1Id) : null;
+            const t2 = match.team2Id ? state.teams.find(t => t.id === match.team2Id) : null;
+
+            // Fetch upcoming matches for bracket progression
+            const futureMatches = state.fixtures.filter(f => f.tournamentId === window.__currentTourneyId && f.id !== window.__currentMatchId && f.status === 'Scheduled');
+            let nextMatchOptions = '<option value="">-- Do Not Advance Winner --</option>';
+            futureMatches.sort((a,b)=>a.matchNo - b.matchNo).forEach(m => {
+                const t1Name = m.team1Id ? (state.teams.find(t=>t.id===m.team1Id)?.name || 'TBD') : 'TBD';
+                const t2Name = m.team2Id ? (state.teams.find(t=>t.id===m.team2Id)?.name || 'TBD') : 'TBD';
+                // Only show matches that have an empty slot (TBD)
+                if (!m.team1Id || !m.team2Id) {
+                    nextMatchOptions += `<option value="${m.id}">Match ${m.matchNo} (${m.stage}): ${t1Name} vs ${t2Name}</option>`;
+                }
+            });
 
             document.getElementById('sys-modal').classList.remove('hidden');
             document.getElementById('sys-modal-content').innerHTML = `
                 <h3 class="text-xl font-black text-gray-900 mb-4">Set Match Result</h3>
-                <div class="space-y-5">
+                <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Select Winner</label>
                         <select id="sel-winner" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="${t1.id}">${t1.name}</option>
-                            <option value="${t2.id}">${t2.name}</option>
+                            ${t1 ? `<option value="${t1.id}">${t1.name}</option>` : ''}
+                            ${t2 ? `<option value="${t2.id}">${t2.name}</option>` : ''}
                             <option value="DRAW">Draw / Tie</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Advance Winner To (Bracket Slot)</label>
+                        <select id="sel-next-match" class="w-full bg-blue-50 text-blue-800 border border-blue-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm">
+                            ${nextMatchOptions}
                         </select>
                     </div>
                     <div>
@@ -935,6 +997,7 @@
 
         window.saveResult = async () => {
             const winner = document.getElementById('sel-winner').value;
+            const nextMatchId = document.getElementById('sel-next-match').value;
             const mom = document.getElementById('inp-mom').value;
             
             try {
@@ -943,6 +1006,20 @@
                     winnerId: winner,
                     momName: mom.trim()
                 });
+
+                // Handle Bracket Progression
+                if (winner !== 'DRAW' && nextMatchId) {
+                    const nextMatch = state.fixtures.find(f => f.id === nextMatchId);
+                    if (nextMatch) {
+                        let updateData = {};
+                        if (!nextMatch.team1Id) updateData.team1Id = winner;
+                        else if (!nextMatch.team2Id) updateData.team2Id = winner;
+                        else updateData.team1Id = winner; // Safety fallback to replace team 1
+                        
+                        await updateDoc(publicDoc('fixtures', nextMatchId), updateData);
+                    }
+                }
+
                 window.closeModal();
             } catch(e) { window.showMessage("Error saving the match result."); }
         };
@@ -1038,9 +1115,8 @@
 
         window.openManualMatchModal = () => {
             const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
-            if(tTeams.length < 2) return window.showMessage("Need at least 2 teams added to create a match.");
-
-            let teamOptions = '<option value="">-- Select Team --</option>';
+            
+            let teamOptions = '<option value="">-- TBD (Empty Slot) --</option>';
             tTeams.forEach(t => { teamOptions += `<option value="${t.id}">${t.name} ${t.group ? '['+t.group+']' : ''}</option>`; });
 
             const existingFixtures = state.fixtures.filter(f => f.tournamentId === window.__currentTourneyId);
@@ -1085,14 +1161,14 @@
         };
 
         window.saveManualMatch = async () => {
-            const t1 = document.getElementById('man-t1').value;
-            const t2 = document.getElementById('man-t2').value;
+            const t1 = document.getElementById('man-t1').value || null;
+            const t2 = document.getElementById('man-t2').value || null;
             const stage = document.getElementById('man-stage').value || 'League Match';
             const mNo = parseInt(document.getElementById('man-match-no').value) || 1;
             const timeEl = document.getElementById('man-match-time');
             const mTime = timeEl ? timeEl.value : null;
 
-            if(!t1 || !t2 || t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
+            if(t1 && t2 && t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
 
             const match = {
                 tournamentId: window.__currentTourneyId,
