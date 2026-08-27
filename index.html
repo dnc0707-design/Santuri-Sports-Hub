@@ -164,7 +164,10 @@
                             <h3 class="font-black text-lg">Participating Teams</h3>
                             <p id="team-count-display" class="text-xs text-gray-500 font-semibold"></p>
                         </div>
-                        <button id="btn-add-team" class="auth-req-admin bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm hidden">+ Add Team</button>
+                        <div class="flex gap-2">
+                            <button id="btn-assign-groups" onclick="window.openAssignGroupsModal()" class="auth-req-admin bg-purple-100 text-purple-700 border border-purple-300 px-3 py-1.5 rounded text-xs font-bold hidden shadow-sm">Groups</button>
+                            <button id="btn-add-team" class="auth-req-admin bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm hidden">+ Add Team</button>
+                        </div>
                     </div>
                     <div id="team-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
                 </div>
@@ -173,11 +176,14 @@
                 <div id="tab-content-fixtures" class="tab-pane hidden-view">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-lg">Match Schedule</h3>
-                        <button id="btn-generate-fixtures" class="auth-req-admin bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1.5 rounded text-xs font-bold hidden">Auto-Generate</button>
+                        <div class="flex gap-2">
+                            <button id="btn-manual-fixture" onclick="window.openManualMatchModal()" class="auth-req-admin bg-green-100 text-green-700 border border-green-300 px-3 py-1.5 rounded text-xs font-bold hidden shadow-sm">+ Manual</button>
+                            <button id="btn-generate-fixtures" class="auth-req-admin bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1.5 rounded text-xs font-bold hidden shadow-sm">Auto-Gen</button>
+                        </div>
                     </div>
                     <div id="fixtures-container" class="space-y-3">
                         <div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg text-sm font-medium border border-yellow-200">
-                            Add all teams first, then click Auto-Generate to build the fixture bracket.
+                            Add all teams first, then generate fixtures or create them manually.
                         </div>
                     </div>
                 </div>
@@ -316,7 +322,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Initialize Firebase
         const firebaseConfig = {
@@ -639,8 +645,15 @@
             document.getElementById('team-count-display').innerText = `${tTeams.length} out of ${t.size} registered`;
             
             const btnAdd = document.getElementById('btn-add-team');
-            if(tTeams.length >= t.size || state.role !== 'admin') btnAdd.classList.add('hidden');
-            else btnAdd.classList.remove('hidden');
+            const btnGrp = document.getElementById('btn-assign-groups');
+            if(state.role === 'admin') {
+                btnGrp.classList.remove('hidden');
+                if(tTeams.length >= t.size) btnAdd.classList.add('hidden');
+                else btnAdd.classList.remove('hidden');
+            } else {
+                btnAdd.classList.add('hidden');
+                btnGrp.classList.add('hidden');
+            }
 
             const teamList = document.getElementById('team-list-container');
             if (tTeams.length === 0) {
@@ -653,7 +666,10 @@
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-xs border border-blue-200">${idx+1}</div>
                             <div>
-                                <h4 class="font-bold text-sm text-gray-900">${team.name}</h4>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold text-sm text-gray-900">${team.name}</h4>
+                                    ${team.group ? `<span class="bg-purple-100 text-purple-800 text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest">${team.group}</span>` : ''}
+                                </div>
                                 <p class="text-[10px] font-bold text-gray-500 uppercase">${pCount} Squad</p>
                             </div>
                         </div>
@@ -677,7 +693,7 @@
                 container.innerHTML = `<div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 font-medium">No players added yet.</div>`;
             } else {
                 container.innerHTML = tPlayers.map((p, i) => `
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex gap-4 items-center">
+                    <div onclick="window.openPlayerModal('${p.id}')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex gap-4 items-center cursor-pointer active:scale-[0.98] hover:border-blue-300 transition-all">
                         <img src="${p.photoBase64}" class="w-14 h-14 rounded-lg object-cover border border-gray-200 shadow-sm" alt="${p.name}">
                         <div class="flex-grow">
                             <h4 class="font-black text-gray-900 text-lg leading-tight mb-1">${p.name}</h4>
@@ -689,6 +705,9 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${p.mobile}
                             </div>
                         </div>
+                        <div class="text-blue-500 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -697,10 +716,20 @@
         function renderFixtures(tournament, teams) {
             const fContainer = document.getElementById('fixtures-container');
             const btnGen = document.getElementById('btn-generate-fixtures');
+            const btnMan = document.getElementById('btn-manual-fixture');
             const existingFixtures = state.fixtures.filter(f => f.tournamentId === tournament.id);
 
-            if (existingFixtures.length > 0) {
+            // Visibility controls
+            if (state.role === 'admin') {
+                btnMan.classList.remove('hidden');
+                if (existingFixtures.length > 0) btnGen.classList.add('hidden');
+                else btnGen.classList.remove('hidden');
+            } else {
                 btnGen.classList.add('hidden');
+                btnMan.classList.add('hidden');
+            }
+
+            if (existingFixtures.length > 0) {
                 fContainer.innerHTML = existingFixtures.sort((a,b) => a.matchNo - b.matchNo).map(match => {
                     const t1 = state.teams.find(t => t.id === match.team1Id);
                     const t2 = state.teams.find(t => t.id === match.team2Id);
@@ -709,9 +738,15 @@
                     if(match.status === 'Live') statusColor = "bg-red-100 text-red-600 animate-pulse";
                     else if(match.status === 'Completed') statusColor = "bg-green-100 text-green-700";
 
+                    let adminDeleteBtn = '';
+                    if (state.role === 'admin' && match.status !== 'Completed') {
+                        adminDeleteBtn = `<button onclick="event.stopPropagation(); window.deleteMatch('${match.id}')" class="absolute top-2 right-2 text-red-400 hover:bg-red-50 rounded p-1 transition-colors z-20"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>`;
+                    }
+
                     return `
                     <div onclick="window.navigate('match-detail', '${match.id}')" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 match-card relative overflow-hidden active:scale-[0.98] cursor-pointer hover:border-blue-300 transition-colors">
-                        <div class="flex justify-between items-center mb-3">
+                        ${adminDeleteBtn}
+                        <div class="flex justify-between items-center mb-3 pr-6">
                             <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${match.stage} • Match ${match.matchNo}</div>
                             <div class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${statusColor}">${match.status || 'Scheduled'}</div>
                         </div>
@@ -730,7 +765,6 @@
                     `;
                 }).join('');
             } else {
-                if(state.role === 'admin') btnGen.classList.remove('hidden');
                 fContainer.innerHTML = `<div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg text-sm font-medium border border-yellow-200 text-center">Fixtures not generated yet.</div>`;
                 
                 btnGen.onclick = async () => {
@@ -888,6 +922,186 @@
                 });
                 window.closeModal();
             } catch(e) { window.showMessage("Error saving the match result."); }
+        };
+
+        window.openPlayerModal = (playerId) => {
+            const p = state.players.find(x => x.id === playerId);
+            if (!p) return;
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `
+                <div class="flex flex-col items-center mb-5 mt-2">
+                    <img src="${p.photoBase64}" class="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-md mb-4">
+                    <h3 class="text-2xl font-black text-gray-900 leading-tight">${p.name}</h3>
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">${p.village}, ${p.block}</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 space-y-3 text-sm border border-gray-100 shadow-inner">
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500 font-bold">Mobile</span><span class="font-black text-gray-900">${p.mobile}</span></div>
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-gray-500 font-bold">Date of Birth</span><span class="font-black text-gray-900">${new Date(p.dob).toLocaleDateString()}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500 font-bold">Full ID No</span><span class="font-black text-gray-900">${p.idNo}</span></div>
+                </div>
+            `;
+            
+            let actionHtml = `<button onclick="window.closeModal()" class="text-gray-500 px-5 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Close</button>`;
+            
+            if (state.role !== 'public') {
+                actionHtml = `
+                    <button onclick="window.deletePlayer('${p.id}')" class="text-red-600 bg-red-50 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-100 mr-auto border border-red-100">Delete</button>
+                    ${actionHtml}
+                `;
+            }
+            
+            document.getElementById('sys-modal-actions').innerHTML = actionHtml;
+        };
+
+        window.deletePlayer = (playerId) => {
+            document.getElementById('sys-modal-content').innerHTML = `
+                <h3 class="text-xl font-black text-red-600 mb-2">Remove Player</h3>
+                <p class="text-gray-600 text-sm font-semibold mb-4">Are you absolutely sure you want to remove this player from the team? This action cannot be undone.</p>
+            `;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.openPlayerModal('${playerId}')" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.executeDeletePlayer('${playerId}')" class="bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-red-700">Yes, Remove</button>
+            `;
+        };
+
+        window.executeDeletePlayer = async (playerId) => {
+            try {
+                await deleteDoc(doc(db, 'artifacts', APP_ID, 'players', playerId));
+                window.closeModal();
+                window.showMessage("Player successfully removed.", "Success");
+            } catch (e) {
+                window.showMessage("Error removing player: " + e.message, "Failed");
+            }
+        };
+
+        // --- Manual Group & Fixture Management Functions ---
+        
+        window.openAssignGroupsModal = () => {
+            const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
+            if(tTeams.length === 0) return window.showMessage("Add teams first to assign groups.");
+
+            let html = '<h3 class="text-xl font-black text-gray-900 mb-4">Assign Groups / Brackets</h3><div class="space-y-3 max-h-60 overflow-y-auto pr-2">';
+            tTeams.forEach(t => {
+                html += `
+                <div class="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
+                    <span class="font-bold text-sm truncate flex-1">${t.name}</span>
+                    <input type="text" id="grp-team-${t.id}" value="${t.group || ''}" placeholder="e.g. Group A, Pool 1" class="w-36 text-xs font-semibold border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>`;
+            });
+            html += '</div>';
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = html;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.saveGroups()" class="bg-purple-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-purple-700">Save Groups</button>
+            `;
+        };
+
+        window.saveGroups = async () => {
+            const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
+            try {
+                for(const t of tTeams) {
+                    const grpVal = document.getElementById(`grp-team-${t.id}`).value.trim();
+                    if(grpVal !== (t.group || '')) {
+                        await updateDoc(doc(db, 'artifacts', APP_ID, 'teams', t.id), { group: grpVal });
+                    }
+                }
+                window.closeModal();
+                window.showMessage("Groups/Brackets updated successfully!", "Success");
+            } catch(e) {
+                window.showMessage("Error updating groups.", "Failed");
+            }
+        };
+
+        window.openManualMatchModal = () => {
+            const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
+            if(tTeams.length < 2) return window.showMessage("Need at least 2 teams added to create a match.");
+
+            let teamOptions = '<option value="">-- Select Team --</option>';
+            tTeams.forEach(t => { teamOptions += `<option value="${t.id}">${t.name} ${t.group ? '['+t.group+']' : ''}</option>`; });
+
+            const existingFixtures = state.fixtures.filter(f => f.tournamentId === window.__currentTourneyId);
+            const nextMatchNo = existingFixtures.length > 0 ? Math.max(...existingFixtures.map(f => f.matchNo || 0)) + 1 : 1;
+
+            let html = `
+                <h3 class="text-xl font-black text-gray-900 mb-4">Create Manual Match</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Team 1 *</label>
+                            <select id="man-t1" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">${teamOptions}</select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Team 2 *</label>
+                            <select id="man-t2" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">${teamOptions}</select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stage / Group Name</label>
+                        <input type="text" id="man-stage" placeholder="e.g. Group A, Quarter-Final 1" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Match Number</label>
+                        <input type="number" id="man-match-no" value="${nextMatchNo}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = html;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.saveManualMatch()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-green-700">Add Match</button>
+            `;
+        };
+
+        window.saveManualMatch = async () => {
+            const t1 = document.getElementById('man-t1').value;
+            const t2 = document.getElementById('man-t2').value;
+            const stage = document.getElementById('man-stage').value || 'League Match';
+            const mNo = parseInt(document.getElementById('man-match-no').value) || 1;
+
+            if(!t1 || !t2 || t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
+
+            const match = {
+                tournamentId: window.__currentTourneyId,
+                matchNo: mNo,
+                stage: stage,
+                team1Id: t1,
+                team2Id: t2,
+                status: 'Scheduled',
+                createdAt: Date.now()
+            };
+
+            try {
+                await addDoc(collection(db, 'artifacts', APP_ID, 'fixtures'), match);
+                window.closeModal();
+            } catch(e) {
+                window.showMessage("Error creating match.", "Failed");
+            }
+        };
+
+        window.deleteMatch = (matchId) => {
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `
+                <h3 class="text-xl font-black text-red-600 mb-2">Delete Match</h3>
+                <p class="text-gray-600 text-sm font-semibold mb-4">Are you sure you want to delete this fixture? This action cannot be undone.</p>
+            `;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.executeDeleteMatch('${matchId}')" class="bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-red-700">Yes, Delete</button>
+            `;
+        };
+
+        window.executeDeleteMatch = async (matchId) => {
+            try {
+                await deleteDoc(doc(db, 'artifacts', APP_ID, 'fixtures', matchId));
+                window.closeModal();
+            } catch(e) {
+                window.showMessage("Error deleting match.", "Failed");
+            }
         };
 
         window.onload = async () => {
