@@ -322,7 +322,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Initialize Firebase
         const firebaseConfig = {
@@ -337,10 +337,13 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Console check to confirm database connection
         console.log("🔥 Firebase Firestore Database Connected Successfully!");
         
         const APP_ID = 'santuri-manager-v2';
+
+        const publicPath = (colName) => collection(db, 'artifacts', APP_ID, 'public', 'data', colName);
+        const publicDoc = (colName, docId) => doc(db, 'artifacts', APP_ID, 'public', 'data', colName, docId);
+        const privateRoleDoc = () => doc(db, 'artifacts', APP_ID, 'users', auth.currentUser.uid, 'profile', 'role');
 
         // Global State
         const state = {
@@ -355,7 +358,6 @@
         window.__currentTeamId = null;
         window.__currentMatchId = null;
 
-        // Message Box / Modal System
         window.showMessage = (msg, title="Notification") => {
             document.getElementById('sys-modal').classList.remove('hidden');
             document.getElementById('sys-modal-content').innerHTML = `<h3 class="text-xl font-black text-gray-900 mb-2">${title}</h3><p class="text-gray-600 text-sm font-semibold">${msg}</p>`;
@@ -382,13 +384,11 @@
 
         window.closeModal = () => document.getElementById('sys-modal').classList.add('hidden');
 
-        // Role Management Logic
         function updateUIPermissions() {
             const isAdmin = state.role === 'admin';
             const isUser = state.role === 'user';
             const isPrivileged = isAdmin || isUser;
 
-            // Toggle UI elements based on class markers
             document.querySelectorAll('.auth-req-admin').forEach(el => {
                 if (isAdmin) el.classList.remove('hidden');
                 else el.classList.add('hidden');
@@ -399,15 +399,12 @@
                 else el.classList.add('hidden');
             });
 
-            // Update Header Status
             const statusEl = document.getElementById('header-auth-status');
             if (isAdmin) { statusEl.innerText = 'Admin'; statusEl.className = 'text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-full'; }
             else if (isUser) { statusEl.innerText = 'User'; statusEl.className = 'text-xs font-bold bg-blue-500 text-white px-3 py-1.5 rounded-full'; }
             else { statusEl.innerText = 'Public View'; statusEl.className = 'text-xs font-bold bg-white/20 px-3 py-1.5 rounded-full'; }
 
-            // Update Login Nav Button
             const loginBtn = document.getElementById('nav-btn-login');
-            const loginText = document.getElementById('nav-login-text');
             if (state.role !== 'public') {
                 loginBtn.onclick = () => window.logout();
                 loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1 text-red-500"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg><span class="text-[10px] font-bold uppercase tracking-wider text-red-500">Logout</span>`;
@@ -416,39 +413,48 @@
                 loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg><span class="text-[10px] font-bold uppercase tracking-wider">Login</span>`;
             }
 
-            // Re-render current view to apply local display logic
             if (window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) {
                 renderTournamentDetail();
             }
         }
 
-        window.logout = function() {
+        window.logout = async function() {
             state.role = 'public';
+            if (auth.currentUser) await setDoc(privateRoleDoc(), { role: 'public' });
             updateUIPermissions();
             window.navigate('dashboard');
         };
 
-        document.getElementById('form-login').addEventListener('submit', (e) => {
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-pass').value;
+            const btn = e.target.querySelector('button');
+            btn.innerText = 'Logging in...'; btn.disabled = true;
 
-            if (id.toLowerCase() === 'admin' && pass === '1234') {
-                state.role = 'admin';
-                window.showMessage('Admin privileges have been granted.', 'Admin Logged In');
-                updateUIPermissions();
-                window.navigate('dashboard');
-            } else if (id.toLowerCase() === 'user' && pass === '1234') {
-                state.role = 'user';
-                window.showMessage('User privileges have been granted.', 'User Logged In');
-                updateUIPermissions();
-                window.navigate('dashboard');
-            } else {
-                window.showMessage('The User ID or Password you entered is incorrect.', 'Invalid Credentials');
+            try {
+                if (id.toLowerCase() === 'admin' && pass === '1234') {
+                    state.role = 'admin';
+                    if (auth.currentUser) await setDoc(privateRoleDoc(), { role: 'admin' });
+                    window.showMessage('Admin privileges have been granted.', 'Admin Logged In');
+                    updateUIPermissions();
+                    window.navigate('dashboard');
+                } else if (id.toLowerCase() === 'user' && pass === '1234') {
+                    state.role = 'user';
+                    if (auth.currentUser) await setDoc(privateRoleDoc(), { role: 'user' });
+                    window.showMessage('User privileges have been granted.', 'User Logged In');
+                    updateUIPermissions();
+                    window.navigate('dashboard');
+                } else {
+                    window.showMessage('The User ID or Password you entered is incorrect.', 'Invalid Credentials');
+                }
+            } catch(err) {
+                window.showMessage('Error establishing session. Please refresh and try again.', 'System Error');
+            } finally {
+                btn.innerText = 'Login Securely'; btn.disabled = false;
             }
         });
 
-        // UI Routing
         window.navigate = function(page, data = null) {
             document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden-view'));
             const target = document.getElementById(`view-${page}`);
@@ -462,7 +468,7 @@
             } else if (page === 'tournament-detail' && data) {
                 window.__currentTourneyId = data;
                 renderTournamentDetail();
-                window.switchTab('info'); // Default tab
+                window.switchTab('info');
             } else if (page === 'team-detail' && data) {
                 window.__currentTeamId = data;
                 renderTeamDetail();
@@ -535,7 +541,7 @@
             };
 
             try {
-                await addDoc(collection(db, 'artifacts', APP_ID, 'tournaments'), tData);
+                await addDoc(publicPath('tournaments'), tData);
                 document.getElementById('form-create-tournament').reset();
                 window.showMessage("Tournament created successfully!", "Success");
                 window.navigate('dashboard');
@@ -543,7 +549,6 @@
             finally { btn.innerText = 'Save Tournament'; btn.disabled = false; }
         });
 
-        // Add Team
         document.getElementById('btn-add-team').addEventListener('click', () => {
             if (!window.__currentTourneyId || state.role !== 'admin') return;
             const t = state.tournaments.find(x => x.id === window.__currentTourneyId);
@@ -554,7 +559,7 @@
             window.showPrompt("Add New Team", "Team Name", async (teamName) => {
                 if (!teamName || teamName.trim() === "") return;
                 try {
-                    await addDoc(collection(db, 'artifacts', APP_ID, 'teams'), {
+                    await addDoc(publicPath('teams'), {
                         name: teamName.trim(),
                         tournamentId: window.__currentTourneyId,
                         createdAt: Date.now()
@@ -585,7 +590,7 @@
             };
 
             try {
-                await addDoc(collection(db, 'artifacts', APP_ID, 'players'), pData);
+                await addDoc(publicPath('players'), pData);
                 window.showMessage("Player added successfully!", "Success");
                 window.navigate('team-detail', window.__currentTeamId);
             } catch (err) { window.showMessage("Error: " + err.message, "Failed"); } 
@@ -595,7 +600,7 @@
         function renderDashboard() {
             const container = document.getElementById('tournament-list');
             if (state.tournaments.length === 0) {
-                container.innerHTML = `<div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 font-medium">No tournaments found.</div>`;
+                container.innerHTML = `<div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 font-medium">No tournaments found yet.</div>`;
                 return;
             }
 
@@ -625,14 +630,12 @@
             
             const tTeams = state.teams.filter(x => x.tournamentId === t.id);
 
-            // Header
             document.getElementById('td-header').innerHTML = `
                 <button onclick="window.navigate('dashboard')" class="text-gray-500 font-semibold text-xs mb-3 flex items-center gap-1 hover:text-blue-600">&larr; Back</button>
                 <h2 class="text-2xl font-black text-gray-900 leading-tight mb-1">${t.name}</h2>
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">${t.sport} • ${t.format}</p>
             `;
 
-            // Info Tab
             document.getElementById('info-container').innerHTML = `
                 <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">Format</span><span class="font-bold">${t.format}</span></div>
                 <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">Max Teams</span><span class="font-bold">${t.size}</span></div>
@@ -641,7 +644,6 @@
                 <div class="flex flex-col pb-2"><span class="text-gray-500 mb-1">Organized By</span><span class="font-bold">${t.organizer || 'TBA'}</span></div>
             `;
 
-            // Teams Tab
             document.getElementById('team-count-display').innerText = `${tTeams.length} out of ${t.size} registered`;
             
             const btnAdd = document.getElementById('btn-add-team');
@@ -719,7 +721,6 @@
             const btnMan = document.getElementById('btn-manual-fixture');
             const existingFixtures = state.fixtures.filter(f => f.tournamentId === tournament.id);
 
-            // Visibility controls
             if (state.role === 'admin') {
                 btnMan.classList.remove('hidden');
                 if (existingFixtures.length > 0) btnGen.classList.add('hidden');
@@ -791,7 +792,7 @@
 
                     btnGen.innerText = "Generating..."; btnGen.disabled = true;
                     try {
-                        for(const m of matches) await addDoc(collection(db, 'artifacts', APP_ID, 'fixtures'), m);
+                        for(const m of matches) await addDoc(publicPath('fixtures'), m);
                     } catch(err) { window.showMessage("Error generating fixtures."); }
                 };
             }
@@ -872,7 +873,7 @@
             const s2 = document.getElementById('inp-score-2').value;
             
             try {
-                await updateDoc(doc(db, 'artifacts', APP_ID, 'fixtures', window.__currentMatchId), {
+                await updateDoc(publicDoc('fixtures', window.__currentMatchId), {
                     scoreT1: s1,
                     scoreT2: s2,
                     status: 'Live'
@@ -915,7 +916,7 @@
             const mom = document.getElementById('inp-mom').value;
             
             try {
-                await updateDoc(doc(db, 'artifacts', APP_ID, 'fixtures', window.__currentMatchId), {
+                await updateDoc(publicDoc('fixtures', window.__currentMatchId), {
                     status: 'Completed',
                     winnerId: winner,
                     momName: mom.trim()
@@ -967,7 +968,7 @@
 
         window.executeDeletePlayer = async (playerId) => {
             try {
-                await deleteDoc(doc(db, 'artifacts', APP_ID, 'players', playerId));
+                await deleteDoc(publicDoc('players', playerId));
                 window.closeModal();
                 window.showMessage("Player successfully removed.", "Success");
             } catch (e) {
@@ -975,8 +976,6 @@
             }
         };
 
-        // --- Manual Group & Fixture Management Functions ---
-        
         window.openAssignGroupsModal = () => {
             const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
             if(tTeams.length === 0) return window.showMessage("Add teams first to assign groups.");
@@ -1005,7 +1004,7 @@
                 for(const t of tTeams) {
                     const grpVal = document.getElementById(`grp-team-${t.id}`).value.trim();
                     if(grpVal !== (t.group || '')) {
-                        await updateDoc(doc(db, 'artifacts', APP_ID, 'teams', t.id), { group: grpVal });
+                        await updateDoc(publicDoc('teams', t.id), { group: grpVal });
                     }
                 }
                 window.closeModal();
@@ -1076,7 +1075,7 @@
             };
 
             try {
-                await addDoc(collection(db, 'artifacts', APP_ID, 'fixtures'), match);
+                await addDoc(publicPath('fixtures'), match);
                 window.closeModal();
             } catch(e) {
                 window.showMessage("Error creating match.", "Failed");
@@ -1097,7 +1096,7 @@
 
         window.executeDeleteMatch = async (matchId) => {
             try {
-                await deleteDoc(doc(db, 'artifacts', APP_ID, 'fixtures', matchId));
+                await deleteDoc(publicDoc('fixtures', matchId));
                 window.closeModal();
             } catch(e) {
                 window.showMessage("Error deleting match.", "Failed");
@@ -1112,31 +1111,45 @@
 
             try {
                 await signInAnonymously(auth);
+                const user = auth.currentUser;
+                if (!user) return;
+
+                // Recover admin session if available
+                try {
+                    const rDoc = await getDoc(privateRoleDoc());
+                    if (rDoc.exists() && rDoc.data().role) {
+                        state.role = rDoc.data().role;
+                        updateUIPermissions();
+                    }
+                } catch (err) { console.log("Standard session loaded."); }
                 
-                onSnapshot(collection(db, 'artifacts', APP_ID, 'tournaments'), snap => {
+                // Establish Database Listeners (using the proper paths)
+                onSnapshot(publicPath('tournaments'), snap => {
                     state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
                     if(window.__currentTourneyId) renderTournamentDetail();
-                });
+                }, err => console.error("Snapshot error:", err));
 
-                onSnapshot(collection(db, 'artifacts', APP_ID, 'teams'), snap => {
+                onSnapshot(publicPath('teams'), snap => {
                     state.teams = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
                     if(window.__currentTourneyId) renderTournamentDetail();
-                });
+                }, err => console.error("Snapshot error:", err));
 
-                onSnapshot(collection(db, 'artifacts', APP_ID, 'players'), snap => {
+                onSnapshot(publicPath('players'), snap => {
                     state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     if(window.__currentTeamId) renderTeamDetail();
-                });
+                }, err => console.error("Snapshot error:", err));
 
-                onSnapshot(collection(db, 'artifacts', APP_ID, 'fixtures'), snap => {
+                onSnapshot(publicPath('fixtures'), snap => {
                     state.fixtures = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     if(window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) renderTournamentDetail();
                     if(window.__currentMatchId && document.getElementById('view-match-detail').classList.contains('hidden-view') === false) renderMatchDetail();
-                });
+                }, err => console.error("Snapshot error:", err));
 
-            } catch (err) { console.error("Auth failed:", err); }
+            } catch (err) { 
+                console.error("Auth / Database failed:", err); 
+            }
         };
     </script>
 </body>
