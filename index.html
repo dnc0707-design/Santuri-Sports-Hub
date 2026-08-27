@@ -269,7 +269,9 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-4 text-center relative overflow-hidden">
                 <div id="md-status-badge" class="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500">Scheduled</div>
                 
-                <div class="flex justify-between items-center mt-6">
+                <div id="md-match-time" class="text-[11px] font-black text-gray-400 mt-5 hidden tracking-widest uppercase">🕒 <span id="md-time-val"></span></div>
+                
+                <div class="flex justify-between items-center mt-3">
                     <div class="flex-1">
                         <h3 id="md-t1-name" class="font-black text-lg text-gray-900 leading-tight">Team 1</h3>
                         <div id="md-t1-score" class="text-2xl font-black text-blue-600 mt-1">-</div>
@@ -420,7 +422,9 @@
 
         window.logout = async function() {
             state.role = 'public';
-            if (auth.currentUser) await setDoc(privateRoleDoc(), { role: 'public' });
+            try {
+                if (auth.currentUser) await setDoc(privateRoleDoc(), { role: 'public' });
+            } catch (e) { console.log("Logged out locally."); }
             updateUIPermissions();
             window.navigate('dashboard');
         };
@@ -744,11 +748,19 @@
                         adminDeleteBtn = `<button onclick="event.stopPropagation(); window.deleteMatch('${match.id}')" class="absolute top-2 right-2 text-red-400 hover:bg-red-50 rounded p-1 transition-colors z-20"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>`;
                     }
 
+                    let timeDisplay = '';
+                    if (match.matchTime) {
+                        let [h, m] = match.matchTime.split(':');
+                        let ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                        timeDisplay = ` • 🕒 ${h}:${m} ${ampm}`;
+                    }
+
                     return `
                     <div onclick="window.navigate('match-detail', '${match.id}')" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 match-card relative overflow-hidden active:scale-[0.98] cursor-pointer hover:border-blue-300 transition-colors">
                         ${adminDeleteBtn}
                         <div class="flex justify-between items-center mb-3 pr-6">
-                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${match.stage} • Match ${match.matchNo}</div>
+                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${match.stage} • Match ${match.matchNo}${timeDisplay}</div>
                             <div class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${statusColor}">${match.status || 'Scheduled'}</div>
                         </div>
                         <div class="flex justify-between items-center relative z-10">
@@ -815,6 +827,16 @@
             badge.className = 'absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ' + 
                 (match.status === 'Live' ? 'bg-red-100 text-red-600 animate-pulse' : 
                 (match.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'));
+
+            const timeDiv = document.getElementById('md-match-time');
+            if (match.matchTime) {
+                let [h, m] = match.matchTime.split(':');
+                let ampm = h >= 12 ? 'PM' : 'AM';
+                document.getElementById('md-time-val').innerText = `${h % 12 || 12}:${m} ${ampm}`;
+                timeDiv.classList.remove('hidden');
+            } else {
+                timeDiv.classList.add('hidden');
+            }
 
             if (match.status === 'Completed' && match.winnerId) {
                 const winner = state.teams.find(t => t.id === match.winnerId);
@@ -1041,9 +1063,15 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stage / Group Name</label>
                         <input type="text" id="man-stage" placeholder="e.g. Group A, Quarter-Final 1" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Match Number</label>
-                        <input type="number" id="man-match-no" value="${nextMatchNo}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Match Number</label>
+                            <input type="number" id="man-match-no" value="${nextMatchNo}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Start Time</label>
+                            <input type="time" id="man-match-time" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
                     </div>
                 </div>
             `;
@@ -1061,7 +1089,8 @@
             const t2 = document.getElementById('man-t2').value;
             const stage = document.getElementById('man-stage').value || 'League Match';
             const mNo = parseInt(document.getElementById('man-match-no').value) || 1;
-            const mTime = document.getElementById('man-match-time').value;
+            const timeEl = document.getElementById('man-match-time');
+            const mTime = timeEl ? timeEl.value : null;
 
             if(!t1 || !t2 || t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
 
@@ -1111,6 +1140,31 @@
             if (window.__pendingNav) window.navigate(window.__pendingNav.page, window.__pendingNav.data);
             else window.navigate('dashboard');
 
+            // 1. Establish Database Listeners FIRST, so data ALWAYS loads
+            onSnapshot(publicPath('tournaments'), snap => {
+                state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
+                if(window.__currentTourneyId) renderTournamentDetail();
+            }, err => console.error("Snapshot error:", err));
+
+            onSnapshot(publicPath('teams'), snap => {
+                state.teams = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
+                if(window.__currentTourneyId) renderTournamentDetail();
+            }, err => console.error("Snapshot error:", err));
+
+            onSnapshot(publicPath('players'), snap => {
+                state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(window.__currentTeamId) renderTeamDetail();
+            }, err => console.error("Snapshot error:", err));
+
+            onSnapshot(publicPath('fixtures'), snap => {
+                state.fixtures = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                if(window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) renderTournamentDetail();
+                if(window.__currentMatchId && document.getElementById('view-match-detail').classList.contains('hidden-view') === false) renderMatchDetail();
+            }, err => console.error("Snapshot error:", err));
+
+            // 2. Try to Authenticate in the background
             try {
                 await signInAnonymously(auth);
                 const user = auth.currentUser;
@@ -1124,33 +1178,8 @@
                         updateUIPermissions();
                     }
                 } catch (err) { console.log("Standard session loaded."); }
-                
-                // Establish Database Listeners (using the proper paths)
-                onSnapshot(publicPath('tournaments'), snap => {
-                    state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
-                    if(window.__currentTourneyId) renderTournamentDetail();
-                }, err => console.error("Snapshot error:", err));
-
-                onSnapshot(publicPath('teams'), snap => {
-                    state.teams = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
-                    if(window.__currentTourneyId) renderTournamentDetail();
-                }, err => console.error("Snapshot error:", err));
-
-                onSnapshot(publicPath('players'), snap => {
-                    state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    if(window.__currentTeamId) renderTeamDetail();
-                }, err => console.error("Snapshot error:", err));
-
-                onSnapshot(publicPath('fixtures'), snap => {
-                    state.fixtures = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                    if(window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) renderTournamentDetail();
-                    if(window.__currentMatchId && document.getElementById('view-match-detail').classList.contains('hidden-view') === false) renderMatchDetail();
-                }, err => console.error("Snapshot error:", err));
-
             } catch (err) { 
-                console.error("Auth / Database failed:", err); 
+                console.log("Running in public mode without auth."); 
             }
         };
     </script>
