@@ -17,16 +17,25 @@
     <script>
         // Dynamically Generate the PWA Manifest using a Data URI to avoid Blob protocol restrictions
         const manifest = {
+            id: "/",
             name: "Santuri Sports Manager",
             short_name: "CricSanturi",
-            start_url: window.location.pathname,
+            description: "The official sports management and live scoring application for Santuri Block. Track tournaments, players, teams, and live fixtures.",
+            start_url: window.location.pathname || "/",
             display: "standalone",
             background_color: "#0f172a",
             theme_color: "#1d4ed8",
             orientation: "portrait",
+            dir: "ltr",
+            lang: "en-US",
+            categories: ["sports", "productivity", "entertainment"],
             icons: [
-                { src: "https://placehold.co/192x192/1d4ed8/ffffff.png?text=SSM", sizes: "192x192", type: "image/png" },
-                { src: "https://placehold.co/512x512/1d4ed8/ffffff.png?text=SSM", sizes: "512x512", type: "image/png" }
+                { src: "https://placehold.co/192x192/1d4ed8/ffffff.png?text=SSM", sizes: "192x192", type: "image/png", purpose: "any" },
+                { src: "https://placehold.co/512x512/1d4ed8/ffffff.png?text=SSM", sizes: "512x512", type: "image/png", purpose: "maskable" }
+            ],
+            screenshots: [
+                { src: "https://placehold.co/1080x1920/0f172a/ffffff.png?text=App+Dashboard", sizes: "1080x1920", type: "image/png", form_factor: "narrow" },
+                { src: "https://placehold.co/1920x1080/0f172a/ffffff.png?text=Desktop+View", sizes: "1920x1080", type: "image/png", form_factor: "wide" }
             ]
         };
         const manifestString = encodeURIComponent(JSON.stringify(manifest));
@@ -339,6 +348,7 @@
             <div id="md-admin-controls" class="space-y-3 hidden auth-req-admin mt-6">
                 <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-b pb-1">Admin Controls</div>
                 <button onclick="window.openScoreModal()" class="w-full bg-blue-50 text-blue-700 border border-blue-200 font-black py-3 rounded-xl shadow-sm hover:bg-blue-100 transition-colors">Update Live Scorecard</button>
+                <button onclick="window.openEditMatchModal(window.__currentMatchId)" class="w-full bg-purple-50 text-purple-700 border border-purple-200 font-black py-3 rounded-xl shadow-sm hover:bg-purple-100 transition-colors">Edit Match Details</button>
                 <button onclick="window.openResultModal()" class="w-full bg-green-50 text-green-700 border border-green-200 font-black py-3 rounded-xl shadow-sm hover:bg-green-100 transition-colors">End Game & Set Result</button>
             </div>
         </div>
@@ -809,9 +819,13 @@
                     if(match.status === 'Live') statusColor = "bg-red-50 text-red-600 ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse";
                     else if(match.status === 'Completed') statusColor = "bg-emerald-50 text-emerald-700 ring-emerald-300";
 
-                    let adminDeleteBtn = '';
+                    let adminControls = '';
                     if (state.role === 'admin' && match.status !== 'Completed') {
-                        adminDeleteBtn = `<button onclick="event.stopPropagation(); window.deleteMatch('${match.id}')" class="absolute top-2 right-2 text-red-400 hover:bg-red-50 rounded p-1 transition-colors z-20"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>`;
+                        adminControls = `
+                        <div class="absolute top-2 right-2 flex gap-1.5 z-20">
+                            <button onclick="event.stopPropagation(); window.openEditMatchModal('${match.id}')" class="text-blue-500 hover:bg-blue-100 bg-white/80 backdrop-blur-md rounded p-1.5 transition-colors shadow-sm ring-1 ring-blue-200/50" title="Edit Fixture"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+                            <button onclick="event.stopPropagation(); window.deleteMatch('${match.id}')" class="text-red-500 hover:bg-red-100 bg-white/80 backdrop-blur-md rounded p-1.5 transition-colors shadow-sm ring-1 ring-red-200/50" title="Delete Fixture"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                        </div>`;
                     }
 
                     let timeDisplay = '';
@@ -824,8 +838,8 @@
 
                     return `
                     <div onclick="window.navigate('match-detail', '${match.id}')" class="match-card p-4 relative overflow-hidden active:scale-[0.98] cursor-pointer hover:border-indigo-400 transition-colors shadow-sm">
-                        ${adminDeleteBtn}
-                        <div class="flex justify-between items-center mb-3 pr-6">
+                        ${adminControls}
+                        <div class="flex justify-between items-center mb-3 pr-16">
                             <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md">${match.stage} • M-${match.matchNo}${timeDisplay}</div>
                             <div class="px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ring-1 ring-inset ${statusColor}">${match.status || 'Scheduled'}</div>
                         </div>
@@ -1270,6 +1284,83 @@
                 window.closeModal();
             } catch(e) {
                 window.showMessage("Error creating match.", "Failed");
+            }
+        };
+
+        window.openEditMatchModal = (matchId) => {
+            const match = state.fixtures.find(x => x.id === matchId);
+            if(!match) return;
+            const tTeams = state.teams.filter(x => x.tournamentId === window.__currentTourneyId);
+            
+            let teamOptions1 = '<option value="">-- TBD (Empty Slot) --</option>';
+            let teamOptions2 = '<option value="">-- TBD (Empty Slot) --</option>';
+            
+            tTeams.forEach(t => { 
+                const selected1 = match.team1Id === t.id ? 'selected' : '';
+                const selected2 = match.team2Id === t.id ? 'selected' : '';
+                teamOptions1 += `<option value="${t.id}" ${selected1}>${t.name} ${t.group ? '['+t.group+']' : ''}</option>`; 
+                teamOptions2 += `<option value="${t.id}" ${selected2}>${t.name} ${t.group ? '['+t.group+']' : ''}</option>`; 
+            });
+
+            let html = `
+                <h3 class="text-xl font-black text-gray-900 mb-4">Edit Match Details</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Team 1</label>
+                            <select id="edit-t1" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">${teamOptions1}</select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Team 2</label>
+                            <select id="edit-t2" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">${teamOptions2}</select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Stage / Group Name</label>
+                        <input type="text" id="edit-stage" value="${match.stage || ''}" placeholder="e.g. Group A, Quarter-Final 1" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Match Number</label>
+                            <input type="number" id="edit-match-no" value="${match.matchNo || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Start Time</label>
+                            <input type="time" id="edit-match-time" value="${match.matchTime || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = html;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.saveEditMatch('${match.id}')" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700">Save Changes</button>
+            `;
+        };
+
+        window.saveEditMatch = async (matchId) => {
+            const t1 = document.getElementById('edit-t1').value || null;
+            const t2 = document.getElementById('edit-t2').value || null;
+            const stage = document.getElementById('edit-stage').value || 'League Match';
+            const mNo = parseInt(document.getElementById('edit-match-no').value) || 1;
+            const timeEl = document.getElementById('edit-match-time');
+            const mTime = timeEl ? timeEl.value : null;
+
+            if(t1 && t2 && t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
+
+            try {
+                await updateDoc(publicDoc('fixtures', matchId), {
+                    team1Id: t1,
+                    team2Id: t2,
+                    stage: stage,
+                    matchNo: mNo,
+                    matchTime: mTime
+                });
+                window.closeModal();
+            } catch(e) {
+                window.showMessage("Error updating match.", "Failed");
             }
         };
 
