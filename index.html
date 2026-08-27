@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Santuri Sports Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        // Pre-flight error prevention for early clicks
+        window.__pendingNav = null;
+        window.navigate = function(page, data = null) { window.__pendingNav = {page, data}; };
+        window.switchTab = function(tab) { /* Placeholder */ };
+        window.logout = function() { /* Placeholder */ };
+    </script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hidden-view { display: none !important; }
+        .app-bg { background-color: #f3f4f6; }
+        .brand-gradient { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); }
+        .bottom-nav-safe { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+        
+        /* Fixture Styles */
+        .match-card { border-left: 4px solid #3b82f6; }
+        
+        /* Custom Scrollbar for desktop */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+
+        /* Role-based display utilities (managed by JS) */
+        .auth-hidden { display: none !important; }
+    </style>
+</head>
+<body class="app-bg text-gray-900 min-h-screen flex flex-col bottom-nav-safe">
+
+    <header class="brand-gradient text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="window.navigate('dashboard')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <h1 class="text-xl font-black tracking-tight uppercase">CricSanturi</h1>
+            </div>
+            <div id="header-auth-status" class="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-full">Public View</div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-3xl mx-auto w-full relative">
+
+        <div id="view-dashboard" class="page-view p-4 hidden-view">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-gray-900">Tournaments</h2>
+                <button id="btn-global-create" onclick="window.navigate('create-tournament')" class="auth-req-admin bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700 hidden">+ Create</button>
+            </div>
+            
+            <div id="tournament-list" class="space-y-4">
+                <div class="text-center py-10 text-gray-500 italic">Loading tournaments...</div>
+            </div>
+        </div>
+
+        <div id="view-login" class="page-view p-4 hidden-view">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-4">
+                <h2 class="text-2xl font-black mb-2">Access Portal</h2>
+                <p class="text-sm text-gray-500 font-semibold mb-6">Login to manage tournaments and players.</p>
+                
+                <form id="form-login" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">User ID</label>
+                        <input type="text" id="login-id" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Password</label>
+                        <input type="password" id="login-pass" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg hover:bg-gray-800 transition-colors mt-2">Login Securely</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="view-create-tournament" class="page-view p-4 hidden-view">
+            <button onclick="window.navigate('dashboard')" class="text-blue-600 font-semibold text-sm mb-4 flex items-center gap-1">&larr; Back</button>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h2 class="text-2xl font-black mb-6">Create Tournament</h2>
+                <form id="form-create-tournament" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Tournament Name *</label>
+                        <input type="text" id="t-name" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Block Level Championship">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Sport *</label>
+                            <select id="t-sport" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="Cricket">Cricket</option>
+                                <option value="Football">Football</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Format *</label>
+                            <select id="t-format" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="Knockout">Knockout</option>
+                                <option value="Round Robin">Round Robin</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Team Size *</label>
+                            <select id="t-size" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="8">8 Teams</option>
+                                <option value="16">16 Teams</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-5 mt-5">
+                        <h3 class="text-sm font-black mb-4">Event Details</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Start Date *</label>
+                                <input type="date" id="t-date" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Venue / Ground *</label>
+                                <input type="text" id="t-venue" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Santuri High School Ground">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Organized By *</label>
+                                <input type="text" id="t-org" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Youth Club Santuri">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-colors mt-4">Save Tournament</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="view-tournament-detail" class="page-view hidden-view">
+            <!-- Header section dynamically injected here via JS -->
+            <div id="td-header" class="bg-white border-b border-gray-200 px-4 py-5 mb-2 shadow-sm"></div>
+            
+            <!-- Sticky Tabs -->
+            <div class="bg-white border-b border-gray-200 sticky top-16 z-40 px-4">
+                <div class="flex space-x-6 overflow-x-auto text-sm font-bold text-gray-500">
+                    <button onclick="window.switchTab('info')" id="tab-btn-info" class="py-3 border-b-2 border-transparent hover:text-blue-600 whitespace-nowrap">INFO</button>
+                    <button onclick="window.switchTab('teams')" id="tab-btn-teams" class="py-3 border-b-2 border-transparent hover:text-blue-600 whitespace-nowrap">TEAMS</button>
+                    <button onclick="window.switchTab('fixtures')" id="tab-btn-fixtures" class="py-3 border-b-2 border-transparent hover:text-blue-600 whitespace-nowrap">FIXTURES</button>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <!-- Info Tab Content -->
+                <div id="tab-content-info" class="tab-pane hidden-view">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
+                        <h3 class="font-black text-lg border-b pb-2">Tournament Details</h3>
+                        <div id="info-container" class="space-y-3 text-sm"></div>
+                    </div>
+                </div>
+
+                <!-- Teams Tab Content -->
+                <div id="tab-content-teams" class="tab-pane hidden-view">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="font-black text-lg">Participating Teams</h3>
+                            <p id="team-count-display" class="text-xs text-gray-500 font-semibold"></p>
+                        </div>
+                        <button id="btn-add-team" class="auth-req-admin bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm hidden">+ Add Team</button>
+                    </div>
+                    <div id="team-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                </div>
+
+                <!-- Fixtures Tab Content -->
+                <div id="tab-content-fixtures" class="tab-pane hidden-view">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-black text-lg">Match Schedule</h3>
+                        <button id="btn-generate-fixtures" class="auth-req-admin bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1.5 rounded text-xs font-bold hidden">Auto-Generate</button>
+                    </div>
+                    <div id="fixtures-container" class="space-y-3">
+                        <div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg text-sm font-medium border border-yellow-200">
+                            Add all teams first, then click Auto-Generate to build the fixture bracket.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-team-detail" class="page-view p-4 hidden-view">
+            <button onclick="window.navigate('tournament-detail', window.__currentTourneyId)" class="text-blue-600 font-semibold text-sm mb-4 flex items-center gap-1">&larr; Back to Tournament</button>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 id="team-detail-name" class="text-2xl font-black">Team Name</h2>
+                        <p class="text-xs text-gray-500 font-semibold mt-1">SQUAD MEMBERS</p>
+                    </div>
+                    <button id="btn-add-player" onclick="window.navigate('add-player', { teamId: window.__currentTeamId, tourneyId: window.__currentTourneyId })" class="auth-req-privileged bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-1 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Add Player
+                    </button>
+                </div>
+            </div>
+            
+            <div id="player-list-container" class="space-y-3">
+                <!-- Players dynamically listed here -->
+            </div>
+        </div>
+
+        <div id="view-add-player" class="page-view p-4 hidden-view">
+            <button onclick="window.navigate('team-detail', window.__currentTeamId)" class="text-blue-600 font-semibold text-sm mb-4 flex items-center gap-1">&larr; Back to Squad</button>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h2 class="text-2xl font-black mb-1">Add Player</h2>
+                <p class="text-xs text-gray-500 font-semibold mb-6">Register a new player to this team.</p>
+                
+                <form id="form-add-player" class="space-y-4">
+                    <!-- Photo Upload using Base64 -->
+                    <div class="flex flex-col items-center justify-center mb-4">
+                        <div class="relative w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                            <img id="player-photo-preview" class="absolute inset-0 w-full h-full object-cover hidden" src="" alt="Preview">
+                            <svg id="photo-placeholder" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            <!-- accept="image/*" allows both Camera app (take photo) and Gallery on mobile -->
+                            <input type="file" id="p-photo-file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="window.handlePhotoChange(event)">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 font-medium">Tap to add Photo (Required)</p>
+                        <input type="hidden" id="p-photo-base64" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Player Name *</label>
+                        <input type="text" id="p-name" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Village *</label>
+                            <input type="text" id="p-vill" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Block *</label>
+                            <input type="text" id="p-block" required value="Santuri" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Date of Birth *</label>
+                            <input type="date" id="p-dob" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Mobile No *</label>
+                            <input type="tel" id="p-mobile" required pattern="[0-9]{10}" placeholder="10 digits" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Aadhar / ID No *</label>
+                            <input type="text" id="p-idno" required class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition-colors mt-4">Save Player</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="view-match-detail" class="page-view p-4 hidden-view">
+            <button onclick="window.navigate('tournament-detail', window.__currentTourneyId)" class="text-blue-600 font-semibold text-sm mb-4 flex items-center gap-1">&larr; Back to Fixtures</button>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-4 text-center relative overflow-hidden">
+                <div id="md-status-badge" class="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500">Scheduled</div>
+                
+                <div class="flex justify-between items-center mt-6">
+                    <div class="flex-1">
+                        <h3 id="md-t1-name" class="font-black text-lg text-gray-900 leading-tight">Team 1</h3>
+                        <div id="md-t1-score" class="text-2xl font-black text-blue-600 mt-1">-</div>
+                    </div>
+                    <div class="px-2 text-gray-400 font-black text-sm italic">VS</div>
+                    <div class="flex-1">
+                        <h3 id="md-t2-name" class="font-black text-lg text-gray-900 leading-tight">Team 2</h3>
+                        <div id="md-t2-score" class="text-2xl font-black text-blue-600 mt-1">-</div>
+                    </div>
+                </div>
+                
+                <div id="md-result-text" class="mt-5 text-sm font-black text-green-600 uppercase tracking-wide hidden bg-green-50 py-2 rounded-lg border border-green-100"></div>
+                <div id="md-mom-text" class="mt-2 text-xs font-semibold text-gray-600 hidden flex items-center justify-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> <span id="md-mom-name"></span></div>
+            </div>
+
+            <div id="md-admin-controls" class="space-y-3 hidden auth-req-admin mt-6">
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-b pb-1">Admin Controls</div>
+                <button onclick="window.openScoreModal()" class="w-full bg-blue-50 text-blue-700 border border-blue-200 font-black py-3 rounded-xl shadow-sm hover:bg-blue-100 transition-colors">Update Live Scorecard</button>
+                <button onclick="window.openResultModal()" class="w-full bg-green-50 text-green-700 border border-green-200 font-black py-3 rounded-xl shadow-sm hover:bg-green-100 transition-colors">End Game & Set Result</button>
+            </div>
+        </div>
+
+    </main>
+
+    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div class="max-w-3xl mx-auto flex justify-around pb-safe">
+            <button onclick="window.navigate('dashboard')" class="flex flex-col items-center py-3 px-6 text-blue-700 w-1/3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <span class="text-[10px] font-bold uppercase tracking-wider">Home</span>
+            </button>
+            <button id="nav-btn-create" onclick="window.navigate('create-tournament')" class="auth-req-admin flex flex-col items-center py-3 px-6 text-gray-500 hover:text-blue-600 w-1/3 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                <span class="text-[10px] font-bold uppercase tracking-wider">Create</span>
+            </button>
+            <button id="nav-btn-login" onclick="window.navigate('login')" class="flex flex-col items-center py-3 px-6 text-gray-500 hover:text-blue-600 w-1/3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                <span class="text-[10px] font-bold uppercase tracking-wider" id="nav-login-text">Login</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Global Modals -->
+    <div id="sys-modal" class="fixed inset-0 bg-black/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div id="sys-modal-content" class="p-5"></div>
+            <div id="sys-modal-actions" class="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-2"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNzxu9MEr_c_B7EpYik62Qc--gikdIXkI",
+            authDomain: "santuri-sports-hub.firebaseapp.com",
+            projectId: "santuri-sports-hub",
+            storageBucket: "santuri-sports-hub.firebasestorage.app",
+            messagingSenderId: "293687065543",
+            appId: "1:293687065543:web:9efb801bc5610b9f74b7e2"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Console check to confirm database connection
+        console.log("🔥 Firebase Firestore Database Connected Successfully!");
+        
+        const APP_ID = 'santuri-manager-v2';
+
+        // Global State
+        const state = {
+            tournaments: [],
+            teams: [],
+            players: [],
+            fixtures: [],
+            role: 'public' // 'public', 'user', 'admin'
+        };
+
+        window.__currentTourneyId = null;
+        window.__currentTeamId = null;
+        window.__currentMatchId = null;
+
+        // Message Box / Modal System
+        window.showMessage = (msg, title="Notification") => {
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `<h3 class="text-xl font-black text-gray-900 mb-2">${title}</h3><p class="text-gray-600 text-sm font-semibold">${msg}</p>`;
+            document.getElementById('sys-modal-actions').innerHTML = `<button onclick="window.closeModal()" class="bg-gray-900 text-white px-5 py-2 rounded-lg font-bold text-sm">Close</button>`;
+        };
+
+        window.showPrompt = (title, label, onConfirm) => {
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `
+                <h3 class="text-xl font-black text-gray-900 mb-4">${title}</h3>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">${label}</label>
+                <input type="text" id="prompt-input" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+            `;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button id="prompt-ok" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700">Submit</button>
+            `;
+            document.getElementById('prompt-ok').onclick = () => {
+                const val = document.getElementById('prompt-input').value;
+                onConfirm(val);
+                window.closeModal();
+            };
+        };
+
+        window.closeModal = () => document.getElementById('sys-modal').classList.add('hidden');
+
+        // Role Management Logic
+        function updateUIPermissions() {
+            const isAdmin = state.role === 'admin';
+            const isUser = state.role === 'user';
+            const isPrivileged = isAdmin || isUser;
+
+            // Toggle UI elements based on class markers
+            document.querySelectorAll('.auth-req-admin').forEach(el => {
+                if (isAdmin) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.auth-req-privileged').forEach(el => {
+                if (isPrivileged) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+
+            // Update Header Status
+            const statusEl = document.getElementById('header-auth-status');
+            if (isAdmin) { statusEl.innerText = 'Admin'; statusEl.className = 'text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-full'; }
+            else if (isUser) { statusEl.innerText = 'User'; statusEl.className = 'text-xs font-bold bg-blue-500 text-white px-3 py-1.5 rounded-full'; }
+            else { statusEl.innerText = 'Public View'; statusEl.className = 'text-xs font-bold bg-white/20 px-3 py-1.5 rounded-full'; }
+
+            // Update Login Nav Button
+            const loginBtn = document.getElementById('nav-btn-login');
+            const loginText = document.getElementById('nav-login-text');
+            if (state.role !== 'public') {
+                loginBtn.onclick = () => window.logout();
+                loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1 text-red-500"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg><span class="text-[10px] font-bold uppercase tracking-wider text-red-500">Logout</span>`;
+            } else {
+                loginBtn.onclick = () => window.navigate('login');
+                loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-1"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg><span class="text-[10px] font-bold uppercase tracking-wider">Login</span>`;
+            }
+
+            // Re-render current view to apply local display logic
+            if (window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) {
+                renderTournamentDetail();
+            }
+        }
+
+        window.logout = function() {
+            state.role = 'public';
+            updateUIPermissions();
+            window.navigate('dashboard');
+        };
+
+        document.getElementById('form-login').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-pass').value;
+
+            if (id.toLowerCase() === 'admin' && pass === '1234') {
+                state.role = 'admin';
+                window.showMessage('Admin privileges have been granted.', 'Admin Logged In');
+                updateUIPermissions();
+                window.navigate('dashboard');
+            } else if (id.toLowerCase() === 'user' && pass === '1234') {
+                state.role = 'user';
+                window.showMessage('User privileges have been granted.', 'User Logged In');
+                updateUIPermissions();
+                window.navigate('dashboard');
+            } else {
+                window.showMessage('The User ID or Password you entered is incorrect.', 'Invalid Credentials');
+            }
+        });
+
+        // UI Routing
+        window.navigate = function(page, data = null) {
+            document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden-view'));
+            const target = document.getElementById(`view-${page}`);
+            if(target) target.classList.remove('hidden-view');
+            window.scrollTo(0, 0);
+
+            if (page === 'dashboard') {
+                renderDashboard();
+            } else if (page === 'login') {
+                document.getElementById('form-login').reset();
+            } else if (page === 'tournament-detail' && data) {
+                window.__currentTourneyId = data;
+                renderTournamentDetail();
+                window.switchTab('info'); // Default tab
+            } else if (page === 'team-detail' && data) {
+                window.__currentTeamId = data;
+                renderTeamDetail();
+            } else if (page === 'match-detail' && data) {
+                window.__currentMatchId = data;
+                renderMatchDetail();
+            } else if (page === 'add-player' && data) {
+                window.__currentTeamId = data.teamId;
+                window.__currentTourneyId = data.tourneyId;
+                document.getElementById('form-add-player').reset();
+                document.getElementById('player-photo-preview').classList.add('hidden');
+                document.getElementById('photo-placeholder').classList.remove('hidden');
+                document.getElementById('p-photo-base64').value = '';
+            }
+        };
+
+        window.switchTab = function(tabName) {
+            ['info', 'teams', 'fixtures'].forEach(t => {
+                document.getElementById(`tab-content-${t}`).classList.add('hidden-view');
+                document.getElementById(`tab-btn-${t}`).classList.remove('border-blue-600', 'text-blue-600');
+                document.getElementById(`tab-btn-${t}`).classList.add('border-transparent');
+            });
+            document.getElementById(`tab-content-${tabName}`).classList.remove('hidden-view');
+            document.getElementById(`tab-btn-${tabName}`).classList.add('border-blue-600', 'text-blue-600');
+            document.getElementById(`tab-btn-${tabName}`).classList.remove('border-transparent');
+        };
+
+        window.handlePhotoChange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 300; 
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.6);
+                    
+                    document.getElementById('p-photo-base64').value = base64Data;
+                    const preview = document.getElementById('player-photo-preview');
+                    preview.src = base64Data;
+                    preview.classList.remove('hidden');
+                    document.getElementById('photo-placeholder').classList.add('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        document.getElementById('form-create-tournament').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = 'Creating...'; btn.disabled = true;
+
+            const tData = {
+                name: document.getElementById('t-name').value,
+                sport: document.getElementById('t-sport').value,
+                format: document.getElementById('t-format').value,
+                size: parseInt(document.getElementById('t-size').value),
+                date: document.getElementById('t-date').value,
+                venue: document.getElementById('t-venue').value,
+                organizer: document.getElementById('t-org').value,
+                createdAt: Date.now()
+            };
+
+            try {
+                await addDoc(collection(db, 'artifacts', APP_ID, 'tournaments'), tData);
+                document.getElementById('form-create-tournament').reset();
+                window.showMessage("Tournament created successfully!", "Success");
+                window.navigate('dashboard');
+            } catch (err) { window.showMessage("Error: " + err.message, "Failed"); } 
+            finally { btn.innerText = 'Save Tournament'; btn.disabled = false; }
+        });
+
+        // Add Team
+        document.getElementById('btn-add-team').addEventListener('click', () => {
+            if (!window.__currentTourneyId || state.role !== 'admin') return;
+            const t = state.tournaments.find(x => x.id === window.__currentTourneyId);
+            const currentTeams = state.teams.filter(x => x.tournamentId === t.id);
+            
+            if (currentTeams.length >= t.size) return window.showMessage(`Cannot add more teams. The limit for this tournament is ${t.size}.`, "Limit Reached");
+
+            window.showPrompt("Add New Team", "Team Name", async (teamName) => {
+                if (!teamName || teamName.trim() === "") return;
+                try {
+                    await addDoc(collection(db, 'artifacts', APP_ID, 'teams'), {
+                        name: teamName.trim(),
+                        tournamentId: window.__currentTourneyId,
+                        createdAt: Date.now()
+                    });
+                } catch (err) { window.showMessage("Error saving team.", "Failed"); }
+            });
+        });
+
+        document.getElementById('form-add-player').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const base64Photo = document.getElementById('p-photo-base64').value;
+            if (!base64Photo) return window.showMessage("Please upload a photo using the camera or gallery.", "Photo Required");
+            
+            const btn = e.target.querySelector('button');
+            btn.innerText = 'Saving...'; btn.disabled = true;
+
+            const pData = {
+                teamId: window.__currentTeamId,
+                tournamentId: window.__currentTourneyId,
+                name: document.getElementById('p-name').value,
+                village: document.getElementById('p-vill').value,
+                block: document.getElementById('p-block').value,
+                dob: document.getElementById('p-dob').value,
+                mobile: document.getElementById('p-mobile').value,
+                idNo: document.getElementById('p-idno').value,
+                photoBase64: base64Photo,
+                createdAt: Date.now()
+            };
+
+            try {
+                await addDoc(collection(db, 'artifacts', APP_ID, 'players'), pData);
+                window.showMessage("Player added successfully!", "Success");
+                window.navigate('team-detail', window.__currentTeamId);
+            } catch (err) { window.showMessage("Error: " + err.message, "Failed"); } 
+            finally { btn.innerText = 'Save Player'; btn.disabled = false; }
+        });
+
+        function renderDashboard() {
+            const container = document.getElementById('tournament-list');
+            if (state.tournaments.length === 0) {
+                container.innerHTML = `<div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 font-medium">No tournaments found.</div>`;
+                return;
+            }
+
+            container.innerHTML = state.tournaments.sort((a,b)=>b.createdAt - a.createdAt).map(t => {
+                const teamCount = state.teams.filter(team => team.tournamentId === t.id).length;
+                return `
+                <div onclick="window.navigate('tournament-detail', '${t.id}')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:scale-[0.98] transition-transform cursor-pointer">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-black text-lg leading-tight text-gray-900">${t.name}</h3>
+                        <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">${t.sport}</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-gray-500 font-semibold mb-3">
+                        <span class="flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> ${t.date ? new Date(t.date).toLocaleDateString() : 'TBA'}</span>
+                        <span class="flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${teamCount} / ${t.size} Teams</span>
+                    </div>
+                    <div class="border-t border-gray-100 pt-2 flex justify-between items-center text-blue-600 text-xs font-bold uppercase tracking-wider">
+                        View Details <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderTournamentDetail() {
+            const t = state.tournaments.find(x => x.id === window.__currentTourneyId);
+            if (!t) return window.navigate('dashboard');
+            
+            const tTeams = state.teams.filter(x => x.tournamentId === t.id);
+
+            // Header
+            document.getElementById('td-header').innerHTML = `
+                <button onclick="window.navigate('dashboard')" class="text-gray-500 font-semibold text-xs mb-3 flex items-center gap-1 hover:text-blue-600">&larr; Back</button>
+                <h2 class="text-2xl font-black text-gray-900 leading-tight mb-1">${t.name}</h2>
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">${t.sport} • ${t.format}</p>
+            `;
+
+            // Info Tab
+            document.getElementById('info-container').innerHTML = `
+                <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">Format</span><span class="font-bold">${t.format}</span></div>
+                <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">Max Teams</span><span class="font-bold">${t.size}</span></div>
+                <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">Start Date</span><span class="font-bold">${t.date ? new Date(t.date).toLocaleDateString() : 'TBA'}</span></div>
+                <div class="flex flex-col border-b border-gray-100 pb-2"><span class="text-gray-500 mb-1">Venue / Ground</span><span class="font-bold">${t.venue || 'TBA'}</span></div>
+                <div class="flex flex-col pb-2"><span class="text-gray-500 mb-1">Organized By</span><span class="font-bold">${t.organizer || 'TBA'}</span></div>
+            `;
+
+            // Teams Tab
+            document.getElementById('team-count-display').innerText = `${tTeams.length} out of ${t.size} registered`;
+            
+            const btnAdd = document.getElementById('btn-add-team');
+            if(tTeams.length >= t.size || state.role !== 'admin') btnAdd.classList.add('hidden');
+            else btnAdd.classList.remove('hidden');
+
+            const teamList = document.getElementById('team-list-container');
+            if (tTeams.length === 0) {
+                teamList.innerHTML = `<div class="col-span-full text-center py-6 text-sm text-gray-500 italic bg-gray-50 rounded-lg border border-dashed border-gray-300">No teams registered yet.</div>`;
+            } else {
+                teamList.innerHTML = tTeams.map((team, idx) => {
+                    const pCount = state.players.filter(p => p.teamId === team.id).length;
+                    return `
+                    <div onclick="window.navigate('team-detail', '${team.id}')" class="bg-white rounded-lg border border-gray-200 p-3 flex items-center justify-between shadow-sm active:scale-[0.98] cursor-pointer hover:border-blue-300">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-black flex items-center justify-center text-xs border border-blue-200">${idx+1}</div>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-900">${team.name}</h4>
+                                <p class="text-[10px] font-bold text-gray-500 uppercase">${pCount} Squad</p>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>`;
+                }).join('');
+            }
+
+            renderFixtures(t, tTeams);
+        }
+
+        function renderTeamDetail() {
+            const team = state.teams.find(x => x.id === window.__currentTeamId);
+            if (!team) return window.navigate('dashboard');
+            
+            document.getElementById('team-detail-name').innerText = team.name;
+            const tPlayers = state.players.filter(x => x.teamId === team.id);
+            const container = document.getElementById('player-list-container');
+
+            if (tPlayers.length === 0) {
+                container.innerHTML = `<div class="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 font-medium">No players added yet.</div>`;
+            } else {
+                container.innerHTML = tPlayers.map((p, i) => `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex gap-4 items-center">
+                        <img src="${p.photoBase64}" class="w-14 h-14 rounded-lg object-cover border border-gray-200 shadow-sm" alt="${p.name}">
+                        <div class="flex-grow">
+                            <h4 class="font-black text-gray-900 text-lg leading-tight mb-1">${p.name}</h4>
+                            <div class="flex gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                <span class="bg-gray-100 px-2 py-0.5 rounded">${p.village}</span>
+                                <span class="bg-gray-100 px-2 py-0.5 rounded">ID: ${p.idNo.substring(p.idNo.length - 4)}</span>
+                            </div>
+                            <div class="text-xs font-semibold text-gray-600 mt-1 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${p.mobile}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderFixtures(tournament, teams) {
+            const fContainer = document.getElementById('fixtures-container');
+            const btnGen = document.getElementById('btn-generate-fixtures');
+            const existingFixtures = state.fixtures.filter(f => f.tournamentId === tournament.id);
+
+            if (existingFixtures.length > 0) {
+                btnGen.classList.add('hidden');
+                fContainer.innerHTML = existingFixtures.sort((a,b) => a.matchNo - b.matchNo).map(match => {
+                    const t1 = state.teams.find(t => t.id === match.team1Id);
+                    const t2 = state.teams.find(t => t.id === match.team2Id);
+                    
+                    let statusColor = "bg-gray-100 text-gray-500";
+                    if(match.status === 'Live') statusColor = "bg-red-100 text-red-600 animate-pulse";
+                    else if(match.status === 'Completed') statusColor = "bg-green-100 text-green-700";
+
+                    return `
+                    <div onclick="window.navigate('match-detail', '${match.id}')" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 match-card relative overflow-hidden active:scale-[0.98] cursor-pointer hover:border-blue-300 transition-colors">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${match.stage} • Match ${match.matchNo}</div>
+                            <div class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${statusColor}">${match.status || 'Scheduled'}</div>
+                        </div>
+                        <div class="flex justify-between items-center relative z-10">
+                            <div class="flex-1 text-center">
+                                <div class="font-bold text-gray-900 leading-tight">${t1 ? t1.name : 'TBD'}</div>
+                                <div class="text-sm font-black text-blue-600 mt-1">${match.scoreT1 || '-'}</div>
+                            </div>
+                            <div class="px-3 py-1 bg-gray-50 rounded-full text-[10px] font-black text-gray-400 shadow-inner">VS</div>
+                            <div class="flex-1 text-center">
+                                <div class="font-bold text-gray-900 leading-tight">${t2 ? t2.name : 'TBD'}</div>
+                                <div class="text-sm font-black text-blue-600 mt-1">${match.scoreT2 || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            } else {
+                if(state.role === 'admin') btnGen.classList.remove('hidden');
+                fContainer.innerHTML = `<div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg text-sm font-medium border border-yellow-200 text-center">Fixtures not generated yet.</div>`;
+                
+                btnGen.onclick = async () => {
+                    if (teams.length < 2) return window.showMessage("You need at least 2 teams to generate fixtures.", "Not Enough Teams");
+                    if (teams.length > tournament.size) return window.showMessage("There are too many teams for this format.", "Limit Exceeded");
+                    
+                    const matches = [];
+                    let matchNo = 1;
+
+                    if (tournament.format === 'Knockout') {
+                        let shuffled = [...teams].sort(() => 0.5 - Math.random());
+                        const stageName = teams.length <= 4 ? 'Semi-Final' : (teams.length <= 8 ? 'Quarter-Final' : 'Round of 16');
+                        for (let i = 0; i < shuffled.length; i += 2) {
+                            const t1 = shuffled[i], t2 = shuffled[i+1];
+                            matches.push({ tournamentId: tournament.id, matchNo: matchNo++, stage: stageName, team1Id: t1 ? t1.id : null, team2Id: t2 ? t2.id : null, status: 'Scheduled', createdAt: Date.now() });
+                        }
+                    } else {
+                        for(let i = 0; i < teams.length; i++) {
+                            for(let j = i + 1; j < teams.length; j++) {
+                                matches.push({ tournamentId: tournament.id, matchNo: matchNo++, stage: 'League Match', team1Id: teams[i].id, team2Id: teams[j].id, status: 'Scheduled', createdAt: Date.now() });
+                            }
+                        }
+                    }
+
+                    btnGen.innerText = "Generating..."; btnGen.disabled = true;
+                    try {
+                        for(const m of matches) await addDoc(collection(db, 'artifacts', APP_ID, 'fixtures'), m);
+                    } catch(err) { window.showMessage("Error generating fixtures."); }
+                };
+            }
+        }
+
+        function renderMatchDetail() {
+            const match = state.fixtures.find(x => x.id === window.__currentMatchId);
+            if (!match) return window.navigate('dashboard');
+            
+            const t1 = state.teams.find(t => t.id === match.team1Id);
+            const t2 = state.teams.find(t => t.id === match.team2Id);
+            
+            document.getElementById('md-t1-name').innerText = t1 ? t1.name : 'TBD';
+            document.getElementById('md-t2-name').innerText = t2 ? t2.name : 'TBD';
+            document.getElementById('md-t1-score').innerText = match.scoreT1 || '-';
+            document.getElementById('md-t2-score').innerText = match.scoreT2 || '-';
+            
+            const badge = document.getElementById('md-status-badge');
+            badge.innerText = match.status || 'Scheduled';
+            badge.className = 'absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ' + 
+                (match.status === 'Live' ? 'bg-red-100 text-red-600 animate-pulse' : 
+                (match.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'));
+
+            if (match.status === 'Completed' && match.winnerId) {
+                const winner = state.teams.find(t => t.id === match.winnerId);
+                const resText = document.getElementById('md-result-text');
+                resText.innerText = winner ? `${winner.name} Won` : (match.winnerId === 'DRAW' ? 'Match Drawn' : 'Match Ended');
+                resText.classList.remove('hidden');
+                
+                if (match.momName) {
+                    document.getElementById('md-mom-name').innerText = match.momName;
+                    document.getElementById('md-mom-text').classList.remove('hidden');
+                } else {
+                    document.getElementById('md-mom-text').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('md-result-text').classList.add('hidden');
+                document.getElementById('md-mom-text').classList.add('hidden');
+            }
+
+            const adminControls = document.getElementById('md-admin-controls');
+            if (state.role === 'admin' && match.status !== 'Completed') {
+                adminControls.classList.remove('hidden');
+            } else {
+                adminControls.classList.add('hidden');
+            }
+        }
+
+        window.openScoreModal = () => {
+            const match = state.fixtures.find(x => x.id === window.__currentMatchId);
+            const t1 = state.teams.find(t => t.id === match.team1Id);
+            const t2 = state.teams.find(t => t.id === match.team2Id);
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `
+                <h3 class="text-xl font-black text-gray-900 mb-2">Update Live Score</h3>
+                <p class="text-xs text-gray-500 font-semibold mb-5 leading-relaxed">Enter runs/overs for Cricket (e.g., 145/4 (19)) or goals for Football (e.g., 2).</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">${t1.name} Score</label>
+                        <input type="text" id="inp-score-1" value="${match.scoreT1 || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">${t2.name} Score</label>
+                        <input type="text" id="inp-score-2" value="${match.scoreT2 || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+            `;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.saveScore()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700">Publish Score</button>
+            `;
+        };
+
+        window.saveScore = async () => {
+            const s1 = document.getElementById('inp-score-1').value;
+            const s2 = document.getElementById('inp-score-2').value;
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'fixtures', window.__currentMatchId), {
+                    scoreT1: s1,
+                    scoreT2: s2,
+                    status: 'Live'
+                });
+                window.closeModal();
+            } catch(e) { window.showMessage("Error updating the live score."); }
+        };
+
+        window.openResultModal = () => {
+            const match = state.fixtures.find(x => x.id === window.__currentMatchId);
+            const t1 = state.teams.find(t => t.id === match.team1Id);
+            const t2 = state.teams.find(t => t.id === match.team2Id);
+
+            document.getElementById('sys-modal').classList.remove('hidden');
+            document.getElementById('sys-modal-content').innerHTML = `
+                <h3 class="text-xl font-black text-gray-900 mb-4">Set Match Result</h3>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Select Winner</label>
+                        <select id="sel-winner" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="${t1.id}">${t1.name}</option>
+                            <option value="${t2.id}">${t2.name}</option>
+                            <option value="DRAW">Draw / Tie</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Man of the Match</label>
+                        <input type="text" id="inp-mom" placeholder="Player Name" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+            `;
+            document.getElementById('sys-modal-actions').innerHTML = `
+                <button onclick="window.closeModal()" class="text-gray-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200">Cancel</button>
+                <button onclick="window.saveResult()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-green-700">End Match</button>
+            `;
+        };
+
+        window.saveResult = async () => {
+            const winner = document.getElementById('sel-winner').value;
+            const mom = document.getElementById('inp-mom').value;
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', APP_ID, 'fixtures', window.__currentMatchId), {
+                    status: 'Completed',
+                    winnerId: winner,
+                    momName: mom.trim()
+                });
+                window.closeModal();
+            } catch(e) { window.showMessage("Error saving the match result."); }
+        };
+
+        window.onload = async () => {
+            updateUIPermissions(); // Apply initial public role
+            
+            if (window.__pendingNav) window.navigate(window.__pendingNav.page, window.__pendingNav.data);
+            else window.navigate('dashboard');
+
+            try {
+                await signInAnonymously(auth);
+                
+                onSnapshot(collection(db, 'artifacts', APP_ID, 'tournaments'), snap => {
+                    state.tournaments = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
+                    if(window.__currentTourneyId) renderTournamentDetail();
+                });
+
+                onSnapshot(collection(db, 'artifacts', APP_ID, 'teams'), snap => {
+                    state.teams = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    if(document.getElementById('view-dashboard').classList.contains('hidden-view') === false) renderDashboard();
+                    if(window.__currentTourneyId) renderTournamentDetail();
+                });
+
+                onSnapshot(collection(db, 'artifacts', APP_ID, 'players'), snap => {
+                    state.players = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    if(window.__currentTeamId) renderTeamDetail();
+                });
+
+                onSnapshot(collection(db, 'artifacts', APP_ID, 'fixtures'), snap => {
+                    state.fixtures = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    if(window.__currentTourneyId && document.getElementById('view-tournament-detail').classList.contains('hidden-view') === false) renderTournamentDetail();
+                    if(window.__currentMatchId && document.getElementById('view-match-detail').classList.contains('hidden-view') === false) renderMatchDetail();
+                });
+
+            } catch (err) { console.error("Auth failed:", err); }
+        };
+    </script>
+</body>
+</html>
