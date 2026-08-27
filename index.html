@@ -1061,6 +1061,7 @@
             const t2 = document.getElementById('man-t2').value;
             const stage = document.getElementById('man-stage').value || 'League Match';
             const mNo = parseInt(document.getElementById('man-match-no').value) || 1;
+            const mTime = document.getElementById('man-match-time').value;
 
             if(!t1 || !t2 || t1 === t2) return window.showMessage("Please select two different teams.", "Invalid Selection");
 
@@ -1070,6 +1071,7 @@
                 stage: stage,
                 team1Id: t1,
                 team2Id: t2,
+                matchTime: mTime || null,
                 status: 'Scheduled',
                 createdAt: Date.now()
             };
